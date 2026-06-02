@@ -66,3 +66,4 @@ con il tuo URL reale di Railway.
 - Il **launcher** sul PC apre semplicemente il browser sull'URL del server
 - Funziona da **qualsiasi PC, tablet o smartphone** con browser
 - Se il server cloud non è raggiungibile, prova il server locale (se avviato)
+- 
