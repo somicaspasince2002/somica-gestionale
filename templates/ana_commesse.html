@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Commesse — SO.MI.CA.{% endblock %}
+{% block ptitle %}Commesse / Centri di Costo{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Commesse / Centri di Costo</h1><div class="meta">{{ rows|length }} commesse</div></div>
+  <button class="btn bp" onclick="apri()">＋ Nuova Commessa</button>
+</div>
+<div class="card">
+  {% if rows %}<div style="overflow-x:auto"><table>
+    <thead><tr><th>Codice</th><th>Descrizione</th><th>Responsabile</th><th>Stato</th><th></th></tr></thead>
+    <tbody>{% for c in rows %}
+    <tr>
+      <td><strong style="color:var(--blu)">{{ c['codice'] }}</strong></td>
+      <td>{{ c['descrizione'] }}</td>
+      <td style="color:var(--mut);font-size:.79rem">{{ c['responsabile'] or '—' }}</td>
+      <td><span class="bdg {{ 'bl' if c['stato']=='attiva' else 'ba' }}">{{ c['stato']|title }}</span></td>
+      <td><button class="btn bo bs" onclick="modifica({{ c|tojson|safe }})">✏️</button></td>
+    </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="emp"><div class="ei">💼</div><p>Nessuna commessa.</p></div>{% endif %}
+</div>
+
+<div id="modale" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:480px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:1.2rem">
+      <h3 id="mtit" style="font-size:1rem;font-weight:700">Nuova Commessa</h3>
+      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--mut)">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('ana_commesse_salva') }}">
+      <input type="hidden" name="id" id="c-id">
+      <div class="g2" style="margin-bottom:.8rem">
+        <div class="fg"><div class="fl">Codice *</div><input class="fi" name="codice" id="c-cod" required></div>
+        <div class="fg"><div class="fl">Stato</div>
+          <select class="fs" name="stato" id="c-sta"><option value="attiva">Attiva</option><option value="chiusa">Chiusa</option></select>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:.8rem"><div class="fl">Descrizione *</div><input class="fi" name="descrizione" id="c-desc" required></div>
+      <div class="fg" style="margin-bottom:1.2rem"><div class="fl">Responsabile</div><input class="fi" name="responsabile" id="c-resp"></div>
+      <div style="display:flex;gap:.7rem;justify-content:flex-end">
+        <button type="button" class="btn bo" onclick="chiudi()">Annulla</button>
+        <button type="submit" class="btn bp">💾 Salva</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function apri(){document.getElementById('mtit').textContent='Nuova Commessa';['id','cod','desc','resp'].forEach(function(k){document.getElementById('c-'+k).value='';});document.getElementById('modale').style.display='flex';}
+function modifica(c){document.getElementById('mtit').textContent='Modifica';document.getElementById('c-id').value=c.id;document.getElementById('c-cod').value=c.codice;document.getElementById('c-desc').value=c.descrizione;document.getElementById('c-resp').value=c.responsabile||'';document.getElementById('c-sta').value=c.stato;document.getElementById('modale').style.display='flex';}
+function chiudi(){document.getElementById('modale').style.display='none';}
+</script>
+{% endblock %}

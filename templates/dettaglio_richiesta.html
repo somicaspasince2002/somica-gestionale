@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}{{ r['numero'] }} — SO.MI.CA.{% endblock %}
+{% block ptitle %}{{ r['numero'] }}{% endblock %}
+{% block content %}
+<div class="ph">
+  <div>
+    <h1>{{ r['numero'] }}</h1>
+    <div class="meta">{{ r['ufficio_richiedente'] }} · {{ r['data'][:10] if r['data'] else '' }} · {{ r['rn'] or '—' }}</div>
+  </div>
+  <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+    {% set s=r['stato'] %}
+    <span class="bdg {{ 'bb' if s=='bozza' else 'bi' if s=='inviata' else 'bl' if s=='in_lavorazione' else 'bc' if s=='chiusa' else 'ba' }}" style="font-size:.8rem;padding:.3rem .9rem">
+      {{ 'Bozza' if s=='bozza' else 'Inviata' if s=='inviata' else 'In lavorazione' if s=='in_lavorazione' else 'Chiusa' if s=='chiusa' else 'Archiviata' }}
+    </span>
+    <a href="{{ url_for('stampa_richiesta',rid=r['id']) }}" class="btn bo bs" target="_blank">🖨 Stampa / PDF</a>
+    {% if session.get('liv') in ['admin','master','ufficio_acquisti'] %}
+    <a href="{{ url_for('nuova_rif') }}?from_richiesta={{ r['id'] }}" class="btn bv bs">📤 Crea richiesta fornitore</a>
+    {% endif %}
+    <a href="{{ url_for('lista_richieste') }}" class="btn bo bs">← Lista</a>
+  </div>
+</div>
+
+<div class="gc">
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Dati richiesta</h3></div>
+      <table style="font-size:.83rem">
+        <tr><td style="color:var(--mut);padding:.38rem 0;width:130px">Numero</td><td><strong style="color:var(--blu)">{{ r['numero'] }}</strong></td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Data</td><td>{{ r['data'][:10] if r['data'] else '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Ufficio</td><td>{{ r['ufficio_richiedente'] }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Richiedente</td><td>{{ r['rn'] or '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Commessa</td><td>{{ (r['cc']+' — '+r['cd']) if r['cc'] else '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Tipo acquisiz.</td><td>{{ r['tipologia_acquisizione'] or '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Procedimento</td><td>{{ r['tipologia_procedimento'] or '—' }}</td></tr>
+        {% if r['inviato_il'] %}<tr><td style="color:var(--mut);padding:.38rem 0">Inviata il</td><td>{{ r['inviato_il'][:16] }}</td></tr>{% endif %}
+        {% if r['chiuso_il'] %}<tr><td style="color:var(--mut);padding:.38rem 0">Chiusa il</td><td>{{ r['chiuso_il'][:16] }}</td></tr>{% endif %}
+      </table>
+    </div>
+    <div class="card">
+      <div class="ch"><h3>Oggetto</h3></div>
+      <p style="font-size:.9rem;font-weight:600;margin-bottom:.5rem">{{ r['oggetto'] }}</p>
+      {% if r['descrizione'] %}<p style="font-size:.83rem;color:var(--mut);line-height:1.6">{{ r['descrizione'] }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Azioni</h3></div>
+      <div style="display:flex;flex-direction:column;gap:.55rem">
+        {% if r['stato']=='bozza' %}
+        <form method="POST" action="{{ url_for('azione_richiesta',rid=r['id']) }}">
+          <input type="hidden" name="azione" value="invia">
+          <button type="submit" class="btn bv" style="width:100%" onclick="return confirm('Inviare all\'Ufficio Acquisti?')">📨 Invia all'Ufficio Acquisti</button>
+        </form>
+        {% endif %}
+        {% if r['stato']=='inviata' and session.get('liv') in ['admin','master','ufficio_acquisti'] %}
+        <form method="POST" action="{{ url_for('azione_richiesta',rid=r['id']) }}">
+          <input type="hidden" name="azione" value="prendi">
+          <button type="submit" class="btn bp" style="width:100%">✋ Prendi in carico</button>
+        </form>
+        {% endif %}
+        {% if r['stato']=='in_lavorazione' and session.get('liv') in ['admin','master','ufficio_acquisti'] %}
+        <form method="POST" action="{{ url_for('azione_richiesta',rid=r['id']) }}">
+          <input type="hidden" name="azione" value="chiudi">
+          <button type="submit" class="btn bv" style="width:100%">✅ Chiudi pratica</button>
+        </form>
+        {% endif %}
+        {% if r['stato'] not in ['archiviata'] and session.get('liv') in ['admin','master'] %}
+        <form method="POST" action="{{ url_for('azione_richiesta',rid=r['id']) }}">
+          <input type="hidden" name="azione" value="archivia">
+          <button type="submit" class="btn" style="width:100%;background:var(--bg);color:var(--mut);border:1px solid var(--brd)" onclick="return confirm('Archiviare?')">🗃 Archivia</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('stampa_richiesta',rid=r['id']) }}" class="btn bo" style="width:100%;justify-content:center" target="_blank">🖨 Stampa / Esporta PDF</a>
+        {% if session.get('liv') in ['admin','master','ufficio_acquisti'] %}
+        <a href="{{ url_for('nuova_rif') }}?from_richiesta={{ r['id'] }}" class="btn bv" style="width:100%;justify-content:center">📤 Crea richiesta fornitore</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><h3>Cronologia</h3></div>
+      <div class="log-r"><div class="log-d"></div><div class="log-t">Creata il {{ r['creato_il'][:16] if r['creato_il'] else '—' }}</div></div>
+      {% if r['inviato_il'] %}<div class="log-r"><div class="log-d" style="background:var(--vio)"></div><div class="log-t">Inviata il {{ r['inviato_il'][:16] }}</div></div>{% endif %}
+      {% if r['chiuso_il'] %}<div class="log-r"><div class="log-d" style="background:var(--vrd)"></div><div class="log-t">Chiusa il {{ r['chiuso_il'][:16] }}</div></div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1.1rem">
+  <div class="ch"><h3>Articoli / Voci richieste ({{ arti|length }})</h3></div>
+  {% if arti %}
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>#</th><th>Descrizione</th><th>U.M.</th><th style="text-align:right">Quantità</th><th>Priorità</th><th>Note</th></tr></thead>
+    <tbody>{% for a in arti %}
+    <tr>
+      <td style="color:var(--mut);font-size:.77rem">{{ loop.index }}</td>
+      <td><strong>{{ a['descrizione'] }}</strong></td>
+      <td style="color:var(--mut)">{{ a['unita_misura'] or '—' }}</td>
+      <td style="text-align:right;font-weight:600">{{ a['quantita'] if a['quantita'] else '—' }}</td>
+      <td>{% set p=a['priorita'] %}
+        <span class="bdg" style="background:{{ '#fde8e8' if p==1 else '#fef3c7' if p==2 else '#fefce8' if p==3 else '#eff6ff' if p==4 else '#f0fdf4' }};color:{{ '#991b1b' if p==1 else '#92400e' if p==2 else '#713f12' if p==3 else '#1e40af' if p==4 else '#166534' }}">
+          {{ '🔴 Immediato' if p==1 else '🟠 In giornata' if p==2 else '🟡 2/3 giorni' if p==3 else '🔵 In settimana' if p==4 else '🟢 Normale' }}
+        </span>
+      </td>
+      <td style="color:var(--mut);font-size:.79rem">{{ a['note'] or '—' }}</td>
+    </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="emp"><div class="ei">📋</div><p>Nessun articolo inserito</p></div>{% endif %}
+</div>
+{% endblock %}

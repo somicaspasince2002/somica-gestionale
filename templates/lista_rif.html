@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Richieste Fornitori — SO.MI.CA.{% endblock %}
+{% block ptitle %}Richieste ai Fornitori{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Richieste ai Fornitori</h1><div class="meta">{{ rows|length }} pratiche{% if in_attesa > 0 %} · <strong style="color:var(--ara)">{{ in_attesa }} richiesta/e in attesa di lavorazione</strong>{% endif %}</div></div>
+  <a href="{{ url_for('nuova_rif') }}" class="btn bp">＋ Nuova Richiesta Fornitore</a>
+</div>
+{% if in_attesa > 0 %}
+<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:9px;padding:.8rem 1.1rem;margin-bottom:1.1rem;font-size:.84rem;color:#92400e">
+  ⚠ Ci sono <strong>{{ in_attesa }}</strong> richiesta/e di acquisizione inviate e in attesa di essere lavorate.
+  <a href="{{ url_for('lista_richieste') }}?stato=inviata" style="color:var(--blu);font-weight:600;margin-left:.5rem">Visualizza →</a>
+</div>
+{% endif %}
+<div class="card" style="margin-bottom:1.1rem">
+  <form method="GET" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:2;min-width:170px"><div class="fl" style="margin-bottom:.28rem">Cerca</div><input class="fi" name="cerca" value="{{ fc }}" placeholder="Numero o oggetto..." style="padding:.55rem .85rem"></div>
+    <div style="flex:1;min-width:130px"><div class="fl" style="margin-bottom:.28rem">Stato</div>
+      <select class="fs" name="stato" style="padding:.55rem .85rem"><option value="">Tutti</option>
+        {% for s,l in [('bozza','Bozza'),('inviata','Inviata')] %}<option value="{{ s }}" {{ 'selected' if fs==s }}>{{ l }}</option>{% endfor %}
+      </select></div>
+    <button type="submit" class="btn bp" style="height:37px">🔍 Filtra</button>
+    <a href="{{ url_for('lista_rif') }}" class="btn bo" style="height:37px">✕</a>
+  </form>
+</div>
+<div class="card">
+  {% if rows %}<div style="overflow-x:auto"><table>
+    <thead><tr><th>Numero</th><th>Fornitore</th><th>Oggetto</th><th>Tipologia</th><th>Data</th><th>Stato</th><th></th></tr></thead>
+    <tbody>{% for rf in rows %}
+    <tr style="cursor:pointer" onclick="location.href='{{ url_for('dettaglio_rif',rfid=rf['id']) }}'">
+      <td><strong style="color:var(--blu);font-size:.8rem">{{ rf['numero'] }}</strong></td>
+      <td style="font-size:.79rem">{{ rf['fn'] or '—' }}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ rf['oggetto'] }}</td>
+      <td style="font-size:.79rem">{{ 'Preventivo' if rf['tipologia']=='preventivo' else 'Indagine mercato' if rf['tipologia']=='indagine' else '—' }}</td>
+      <td style="color:var(--mut);font-size:.79rem">{{ rf['data'][:10] if rf['data'] else '—' }}</td>
+      <td><span class="bdg {{ 'bb' if rf['stato']=='bozza' else 'bl' }}">{{ rf['stato']|title }}</span></td>
+      <td style="color:var(--blu)">→</td>
+    </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="emp"><div class="ei">📤</div><p>Nessuna richiesta ai fornitori ancora.</p></div>{% endif %}
+</div>
+{% endblock %}

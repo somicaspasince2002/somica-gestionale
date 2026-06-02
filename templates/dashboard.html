@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Cruscotto — SO.MI.CA.{% endblock %}
+{% block ptitle %}Cruscotto{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Benvenuto, {{ u['nome'] }}</h1><div class="meta">{{ oggi }} · {{ u['ufficio'] }} · {{ u['ruolo'] }}</div></div>
+  {% if session.get('liv') in ['admin','master','richiedente'] %}
+  <a href="{{ url_for('nuova_richiesta') }}" class="btn bp">＋ Nuova Richiesta</a>
+  {% endif %}
+</div>
+
+<div class="kpi-g">
+  <div class="kpi a"><div class="kpi-l">Totale</div><div class="kpi-v">{{ tot['t'] or 0 }}</div><div class="kpi-s">pratiche</div></div>
+  <div class="kpi b"><div class="kpi-l">Bozze</div><div class="kpi-v">{{ tot['bozze'] or 0 }}</div><div class="kpi-s">in compilazione</div></div>
+  <div class="kpi c"><div class="kpi-l">Inviate</div><div class="kpi-v">{{ tot['inv'] or 0 }}</div><div class="kpi-s">all'ufficio acquisti</div></div>
+  <div class="kpi d"><div class="kpi-l">In lavorazione</div><div class="kpi-v">{{ tot['lav'] or 0 }}</div><div class="kpi-s">prese in carico</div></div>
+  <div class="kpi e"><div class="kpi-l">Chiuse</div><div class="kpi-v">{{ tot['chi'] or 0 }}</div><div class="kpi-s">completate</div></div>
+  <div class="kpi f"><div class="kpi-l">Archiviate</div><div class="kpi-v">{{ tot['arc'] or 0 }}</div><div class="kpi-s">storico</div></div>
+</div>
+
+<div class="gc">
+  <div class="card">
+    <div class="ch"><div><h3>Richieste recenti</h3><div class="sub">Ultime pratiche</div></div><a href="{{ url_for('lista_richieste') }}" class="btn bo bs">Vedi tutte →</a></div>
+    {% if rec %}
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Numero</th><th>Oggetto</th><th>Ufficio</th><th>Data</th><th>Stato</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rec %}
+      <tr style="cursor:pointer" onclick="location.href='{{ url_for('dettaglio_richiesta',rid=r['id']) }}'">
+        <td><strong style="color:var(--blu);font-size:.79rem">{{ r['numero'] }}</strong></td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r['oggetto'] }}</td>
+        <td style="color:var(--mut);font-size:.78rem">{{ r['ufficio_richiedente'] }}</td>
+        <td style="color:var(--mut);font-size:.77rem;white-space:nowrap">{{ r['data'][:10] if r['data'] else '—' }}</td>
+        <td>{% set s=r['stato'] %}
+          <span class="bdg {{ 'bb' if s=='bozza' else 'bi' if s=='inviata' else 'bl' if s=='in_lavorazione' else 'bc' if s=='chiusa' else 'ba' }}">
+            {{ 'Bozza' if s=='bozza' else 'Inviata' if s=='inviata' else 'In lavorazione' if s=='in_lavorazione' else 'Chiusa' if s=='chiusa' else 'Archiviata' }}
+          </span>
+        </td>
+        <td><span style="color:var(--blu)">→</span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <div class="emp"><div class="ei">📭</div><p>Nessuna richiesta ancora.<br>Usa <a href="{{ url_for('nuova_richiesta') }}" style="color:var(--blu)">Nuova Richiesta</a> per iniziare.</p></div>
+    {% endif %}
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Per stato</h3></div>
+      {% if stati %}
+      {% set mx=namespace(v=1) %}{% for s in stati %}{% if s['n']>mx.v %}{% set mx.v=s['n'] %}{% endif %}{% endfor %}
+      {% set col={'bozza':'var(--ara)','inviata':'var(--vio)','in_lavorazione':'var(--vrd)','chiusa':'var(--mut)','archiviata':'var(--ros)'} %}
+      <div class="bar-c">{% for s in stati %}
+        <div class="bar-r">
+          <div class="bar-l">{{ 'Bozze' if s['stato']=='bozza' else 'Inviate' if s['stato']=='inviata' else 'In lav.' if s['stato']=='in_lavorazione' else 'Chiuse' if s['stato']=='chiusa' else 'Archiv.' }}</div>
+          <div class="bar-t"><div class="bar-f" style="width:{{ ((s['n']/mx.v)*100)|int }}%;background:{{ col.get(s['stato'],'var(--blu)') }}"></div></div>
+          <div class="bar-n">{{ s['n'] }}</div>
+        </div>
+      {% endfor %}</div>
+      {% else %}<p style="color:var(--mut);font-size:.82rem;text-align:center;padding:.8rem">Nessun dato</p>{% endif %}
+    </div>
+
+    {% if is_staff and uffici_stat %}
+    <div class="card">
+      <div class="ch"><h3>Per ufficio</h3></div>
+      {% set mx2=namespace(v=1) %}{% for x in uffici_stat %}{% if x['n']>mx2.v %}{% set mx2.v=x['n'] %}{% endif %}{% endfor %}
+      <div class="bar-c">{% for x in uffici_stat %}
+        <div class="bar-r">
+          <div class="bar-l">{{ x['ufficio_richiedente'] }}</div>
+          <div class="bar-t"><div class="bar-f" style="width:{{ ((x['n']/mx2.v)*100)|int }}%"></div></div>
+          <div class="bar-n">{{ x['n'] }}</div>
+        </div>
+      {% endfor %}</div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="ch"><h3>Attività recenti</h3></div>
+      {% for l in ulti %}
+      <div class="log-r"><div class="log-d"></div>
+        <div class="log-t"><strong>{{ l['nu'] or 'Sistema' }}</strong> — {{ l['dettaglio'] or l['azione'] }}</div>
+        <div class="log-tm">{{ l['quando'][11:16] if l['quando'] else '' }}</div>
+      </div>
+      {% else %}<p style="color:var(--mut);font-size:.82rem;padding:.5rem">Nessuna attività</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

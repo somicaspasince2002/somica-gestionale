@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ rf['numero'] }} — SO.MI.CA.{% endblock %}
+{% block ptitle %}{{ rf['numero'] }}{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>{{ rf['numero'] }}</h1><div class="meta">{% if rf['fn'] %}{{ rf['fn'] }}{% else %}Fornitore non specificato{% endif %} · {{ rf['data'][:10] if rf['data'] else '' }}</div></div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <span class="bdg {{ 'bb' if rf['stato']=='bozza' else 'bl' }}" style="font-size:.8rem;padding:.3rem .9rem">{{ rf['stato']|title }}</span>
+    <a href="{{ url_for('stampa_rif',rfid=rf['id']) }}" class="btn bv bs" target="_blank">🖨 Stampa / PDF</a>
+    <a href="{{ url_for('lista_rif') }}" class="btn bo bs">← Lista</a>
+  </div>
+</div>
+<div class="gc">
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Dati richiesta</h3></div>
+      <table style="font-size:.83rem">
+        <tr><td style="color:var(--mut);padding:.38rem 0;width:130px">Numero</td><td><strong style="color:var(--blu)">{{ rf['numero'] }}</strong></td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Data</td><td>{{ rf['data'][:10] if rf['data'] else '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Tipologia</td><td>{{ 'Richiesta Preventivo' if rf['tipologia']=='preventivo' else 'Indagine di Mercato' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.38rem 0">Fornitore</td><td><strong>{{ rf['fn'] or '—' }}</strong></td></tr>
+        {% if rf['fi'] %}<tr><td style="color:var(--mut);padding:.38rem 0">Indirizzo</td><td>{{ rf['fi'] }}, {{ rf['fco'] }} ({{ rf['fp'] }})</td></tr>{% endif %}
+        {% if rf['fpi'] %}<tr><td style="color:var(--mut);padding:.38rem 0">P.IVA</td><td>{{ rf['fpi'] }}</td></tr>{% endif %}
+        {% if rf['fpec'] %}<tr><td style="color:var(--mut);padding:.38rem 0">PEC</td><td>{{ rf['fpec'] }}</td></tr>{% endif %}
+        {% if rf['fe'] %}<tr><td style="color:var(--mut);padding:.38rem 0">Email</td><td>{{ rf['fe'] }}</td></tr>{% endif %}
+      </table>
+    </div>
+    {% if rf['testo_intro'] %}
+    <div class="card">
+      <div class="ch"><h3>Testo</h3></div>
+      <p style="font-size:.82rem;line-height:1.6;color:var(--mut)">{{ rf['testo_intro'] }}</p>
+    </div>
+    {% endif %}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Azioni</h3></div>
+      <div style="display:flex;flex-direction:column;gap:.55rem">
+        <a href="{{ url_for('stampa_rif',rfid=rf['id']) }}" class="btn bv" style="width:100%;justify-content:center" target="_blank">🖨 Stampa / Salva PDF</a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card" style="margin-top:1.1rem">
+  <div class="ch"><h3>Articoli / Voci ({{ arti|length }})</h3></div>
+  {% if arti %}<div style="overflow-x:auto"><table>
+    <thead><tr><th>#</th><th>Descrizione</th><th>U.M.</th><th style="text-align:right">Quantità</th><th>Note</th></tr></thead>
+    <tbody>{% for a in arti %}
+    <tr><td style="color:var(--mut);font-size:.77rem">{{ loop.index }}</td>
+      <td><strong>{{ a['descrizione'] }}</strong></td>
+      <td style="color:var(--mut)">{{ a['unita_misura'] or '—' }}</td>
+      <td style="text-align:right;font-weight:600">{{ a['quantita'] if a['quantita'] else '—' }}</td>
+      <td style="color:var(--mut);font-size:.79rem">{{ a['note'] or '—' }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="emp"><div class="ei">📋</div><p>Nessun articolo</p></div>{% endif %}
+</div>
+{% endblock %}

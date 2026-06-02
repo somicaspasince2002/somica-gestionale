@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Richieste — SO.MI.CA.{% endblock %}
+{% block ptitle %}Richieste di Acquisizione{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Richieste di Acquisizione</h1><div class="meta">{{ rows|length }} pratiche trovate</div></div>
+  {% if session.get('liv') in ['admin','master','richiedente'] %}
+  <a href="{{ url_for('nuova_richiesta') }}" class="btn bp">＋ Nuova Richiesta</a>
+  {% endif %}
+</div>
+<div class="card" style="margin-bottom:1.1rem">
+  <form method="GET" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:2;min-width:170px">
+      <div class="fl" style="margin-bottom:.28rem">Cerca</div>
+      <input class="fi" name="cerca" value="{{ fc }}" placeholder="Numero o oggetto..." style="padding:.55rem .85rem">
+    </div>
+    <div style="flex:1;min-width:130px">
+      <div class="fl" style="margin-bottom:.28rem">Stato</div>
+      <select class="fs" name="stato" style="padding:.55rem .85rem">
+        <option value="">Tutti</option>
+        {% for s,l in [('bozza','Bozza'),('inviata','Inviata'),('in_lavorazione','In lavorazione'),('chiusa','Chiusa'),('archiviata','Archiviata')] %}
+        <option value="{{ s }}" {{ 'selected' if fs==s }}>{{ l }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if is_staff %}
+    <div style="flex:1;min-width:150px">
+      <div class="fl" style="margin-bottom:.28rem">Ufficio</div>
+      <select class="fs" name="ufficio" style="padding:.55rem .85rem">
+        <option value="">Tutti</option>
+        {% for uf in uffici %}<option value="{{ uf['ufficio_richiedente'] }}" {{ 'selected' if fu==uf['ufficio_richiedente'] }}>{{ uf['ufficio_richiedente'] }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <button type="submit" class="btn bp" style="height:37px">🔍 Filtra</button>
+    <a href="{{ url_for('lista_richieste') }}" class="btn bo" style="height:37px">✕</a>
+  </form>
+</div>
+<div class="card">
+  {% if rows %}
+  <div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>Numero</th><th>Oggetto</th>
+      {% if is_staff %}<th>Richiedente</th>{% endif %}
+      <th>Ufficio</th><th>Tipo</th><th>Data</th><th>Stato</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr style="cursor:pointer" onclick="location.href='{{ url_for('dettaglio_richiesta',rid=r['id']) }}'">
+      <td><strong style="color:var(--blu);font-size:.8rem">{{ r['numero'] }}</strong></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r['oggetto'] }}</td>
+      {% if is_staff %}<td style="color:var(--mut);font-size:.79rem">{{ r['rn'] or '—' }}</td>{% endif %}
+      <td style="color:var(--mut);font-size:.79rem;white-space:nowrap">{{ r['ufficio_richiedente'] }}</td>
+      <td style="font-size:.79rem">{{ r['tipologia_acquisizione'] or '—' }}</td>
+      <td style="color:var(--mut);font-size:.79rem;white-space:nowrap">{{ r['data'][:10] if r['data'] else '—' }}</td>
+      <td>{% set s=r['stato'] %}
+        <span class="bdg {{ 'bb' if s=='bozza' else 'bi' if s=='inviata' else 'bl' if s=='in_lavorazione' else 'bc' if s=='chiusa' else 'ba' }}">
+          {{ 'Bozza' if s=='bozza' else 'Inviata' if s=='inviata' else 'In lavorazione' if s=='in_lavorazione' else 'Chiusa' if s=='chiusa' else 'Archiviata' }}
+        </span>
+      </td>
+      <td style="color:var(--blu)">→</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="emp"><div class="ei">📭</div>
+    <p>Nessuna richiesta trovata.
+    {% if fc or fs or fu %}<a href="{{ url_for('lista_richieste') }}" style="color:var(--blu)">Rimuovi filtri</a> oppure{% endif %}
+    <a href="{{ url_for('nuova_richiesta') }}" style="color:var(--blu)">crea una nuova richiesta</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

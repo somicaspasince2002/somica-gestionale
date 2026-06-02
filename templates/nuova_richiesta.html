@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Nuova Richiesta — SO.MI.CA.{% endblock %}
+{% block ptitle %}Nuova Richiesta di Acquisizione{% endblock %}
+{% block extra_css %}
+<style>
+.pri-s{padding:.38rem .5rem;border:1.5px solid var(--brd);border-radius:7px;font-size:.8rem;font-family:inherit;width:100%;outline:none;cursor:pointer}
+.p1{background:#fde8e8;color:#991b1b;border-color:#fca5a5}
+.p2{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.p3{background:#fefce8;color:#713f12;border-color:#fde047}
+.p4{background:#eff6ff;color:#1e40af;border-color:#93c5fd}
+.p5{background:#f0fdf4;color:#166534;border-color:#86efac}
+.at{width:100%;border-collapse:collapse;font-size:.81rem}
+.at th{background:var(--bg);color:var(--mut);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:.48rem .55rem;text-align:left;border-bottom:1px solid var(--brd)}
+.at td{padding:.35rem .3rem;border-bottom:1px solid var(--brd);vertical-align:middle}
+.at tr:last-child td{border-bottom:none}
+.ai{padding:.4rem .55rem;border:1.5px solid var(--brd);border-radius:6px;font-size:.81rem;font-family:inherit;color:var(--txt);width:100%;outline:none}
+.ai:focus{border-color:var(--blu);box-shadow:0 0 0 2px rgba(26,58,107,.08)}
+.bdl{background:none;border:none;cursor:pointer;color:var(--mut);padding:.28rem;border-radius:4px}
+.bdl:hover{color:var(--ros)}
+.fa{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--brd);padding:.9rem 1.7rem;margin:0 -1.7rem -1.5rem;display:flex;align-items:center;justify-content:flex-end;gap:.7rem;z-index:40}
+.np{font-size:.78rem;color:var(--mut);margin-right:auto}
+.np span{font-weight:700;color:var(--blu)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Nuova Richiesta</h1><div class="meta">Compila i campi e salva come bozza oppure invia direttamente all'Ufficio Acquisti</div></div>
+  <a href="{{ url_for('lista_richieste') }}" class="btn bo">← Lista</a>
+</div>
+
+<form method="POST" id="frm">
+
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Dati generali</div>
+  <div class="g3" style="margin-bottom:.9rem">
+    <div class="fg"><div class="fl">Numero (auto)</div><input class="fi" value="{{ num_prev }}" disabled style="background:var(--bg);color:var(--mut)"></div>
+    <div class="fg"><div class="fl">Data *</div><input class="fi" type="date" name="data" value="{{ oggi }}" required></div>
+    <div class="fg"><div class="fl">Ufficio richiedente *</div>
+      <select class="fs" name="ufficio_richiedente" required>
+        {% for uf in ['Ufficio Tecnico','Ufficio Amministrativo','Magazzino'] %}
+        <option value="{{ uf }}" {{ 'selected' if u['ufficio']==uf }}>{{ uf }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="fg"><div class="fl">Referente richiedente</div>
+      <select class="fs" name="referente_id">
+        <option value="">— seleziona —</option>
+        {% for ut in utenti_l %}
+        <option value="{{ ut['id'] }}" {{ 'selected' if ut['id']==u['id'] }}>{{ ut['nome'] }} {{ ut['cognome'] }} — {{ ut['ufficio'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="fg"><div class="fl">Commessa / Centro di costo</div>
+      <select class="fs" name="commessa_id">
+        <option value="">— nessuna —</option>
+        {% for c in commesse %}
+        <option value="{{ c['id'] }}">{{ c['codice'] }} — {{ c['descrizione'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Tipologia</div>
+  <div class="g2">
+    <div class="fg"><div class="fl">Tipo acquisizione *</div>
+      <select class="fs" name="tipologia_acquisizione" required>
+        <option value="">— seleziona —</option>
+        {% for t in ['Fornitura','Bene','Servizio','Lavoro'] %}<option>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="fg"><div class="fl">Tipo procedimento *</div>
+      <select class="fs" name="tipologia_procedimento" required>
+        <option value="">— seleziona —</option>
+        {% for t in ['Acquisto diretto','Indagine di mercato','Richiesta di preventivo'] %}<option>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Oggetto e descrizione</div>
+  <div class="fg" style="margin-bottom:.8rem"><div class="fl">Oggetto della richiesta *</div>
+    <input class="fi" type="text" name="oggetto" placeholder="Es. Fornitura materiali manutenzione strade" required maxlength="250">
+  </div>
+  <div class="fg"><div class="fl">Descrizione / motivazione</div>
+    <textarea class="ft" name="descrizione" placeholder="Dettagli aggiuntivi, motivazioni, specifiche tecniche..."></textarea>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:5rem">
+  <div class="st" style="display:flex;align-items:center;justify-content:space-between">
+    <span>Elenco articoli / voci richieste</span>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <select id="sel-cat" class="fs" style="width:auto;font-size:.76rem;padding:.3rem .55rem" onchange="filtraArt(this.value)">
+        <option value="">Tutte le categorie</option>
+        {% for cat in categorie %}<option>{{ cat }}</option>{% endfor %}
+      </select>
+      <button type="button" class="btn bo bs" onclick="addRow()">＋ Riga</button>
+    </div>
+  </div>
+  <div style="overflow-x:auto;margin-top:.5rem">
+    <table class="at" id="tab">
+      <thead><tr>
+        <th style="width:32%">Descrizione *</th>
+        <th style="width:9%">U.M.</th>
+        <th style="width:11%">Quantità</th>
+        <th style="width:20%">Priorità</th>
+        <th style="width:22%">Note</th>
+        <th style="width:6%"></th>
+      </tr></thead>
+      <tbody id="tbody">
+        <tr>
+          <td><input type="text" name="desc[]" class="ai" placeholder="Descrizione..." list="dl-art" autocomplete="off"></td>
+          <td><select name="um[]" class="ai" style="padding:.38rem .35rem">
+            <option value="">—</option>
+            {% for um in um_list %}<option value="{{ um['valore'] }}">{{ um['valore'] }}</option>{% endfor %}
+          </select></td>
+          <td><input type="text" name="qta[]" class="ai" placeholder="0" style="text-align:right" oninput="calcQta(this)"></td>
+          <td><select name="pri[]" class="pri-s p5" onchange="updPri(this)">
+            <option value="1">🔴 1 - Acquisto immediato</option>
+            <option value="2">🟠 2 - In giornata</option>
+            <option value="3">🟡 3 - 2/3 giorni</option>
+            <option value="4">🔵 4 - In settimana</option>
+            <option value="5" selected>🟢 5 - Normale procedura</option>
+          </select></td>
+          <td><input type="text" name="note_riga[]" class="ai" placeholder="Note..."></td>
+          <td><button type="button" class="bdl" onclick="delRow(this)" title="Rimuovi">✕</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <datalist id="dl-art">{% for a in articoli %}<option value="{{ a['descrizione'] }}">{% endfor %}</datalist>
+</div>
+
+<div class="fa noprint">
+  <div class="np">Numero: <span>{{ num_prev }}</span></div>
+  <a href="{{ url_for('lista_richieste') }}" class="btn bo">Annulla</a>
+  <button type="submit" name="azione" value="salva" class="btn bp">💾 Salva bozza</button>
+  <button type="submit" name="azione" value="invia" class="btn bv">📨 Invia all'Ufficio Acquisti</button>
+</div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+var AJ = {{ aj|safe }};
+function addRow(){
+  var tb=document.getElementById('tbody'), tr=tb.querySelector('tr').cloneNode(true);
+  tr.querySelectorAll('input').forEach(function(i){i.value='';});
+  var s=tr.querySelector('select[name="um[]"]'); if(s)s.selectedIndex=0;
+  var p=tr.querySelector('select[name="pri[]"]'); if(p){p.value='5';updPri(p);}
+  tb.appendChild(tr);
+}
+function delRow(btn){
+  var tb=document.getElementById('tbody');
+  if(tb.querySelectorAll('tr').length>1) btn.closest('tr').remove();
+}
+function updPri(s){
+  var cls=['','p1','p2','p3','p4','p5'];
+  s.className='pri-s '+(cls[s.value]||'');
+}
+function calcQta(inp){
+  try{
+    var v=inp.value.replace(/[^0-9+\-*\/().]/g,'');
+    if(/[+\-*\/]/.test(v)){var r=eval(v);if(!isNaN(r)&&isFinite(r))inp.title='= '+Math.round(r*100)/100;}
+  }catch(e){}
+}
+function filtraArt(cat){
+  var dl=document.getElementById('dl-art');
+  dl.innerHTML='';
+  Object.keys(AJ).forEach(function(k){
+    var a=AJ[k];
+    if(!cat||a.cat===cat){var o=document.createElement('option');o.value=k;dl.appendChild(o);}
+  });
+}
+document.addEventListener('input',function(e){
+  if(e.target.name==='desc[]'){
+    var a=AJ[e.target.value];
+    if(a){
+      var tr=e.target.closest('tr');
+      var us=tr.querySelector('select[name="um[]"]');
+      if(us){for(var i=0;i<us.options.length;i++){if(us.options[i].value===a.um){us.selectedIndex=i;break;}}}
+    }
+  }
+});
+</script>
+{% endblock %}
