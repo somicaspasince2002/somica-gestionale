@@ -3,68 +3,104 @@
 {% block ptitle %}Gestione Utenti{% endblock %}
 {% block content %}
 <div class="ph">
-  <div><h1>Gestione Utenti</h1><div class="meta">{{ rows|length }} utenti</div></div>
-  <button class="btn bp" onclick="apri()">＋ Nuovo Utente</button>
+  <div><h1>Gestione Utenti</h1><div class="meta">{{ rows|length }} utenti registrati</div></div>
+  <button class="btn bp" onclick="apriNuovo()">＋ Nuovo Utente</button>
 </div>
 <div class="card">
   <div style="overflow-x:auto"><table>
     <thead><tr><th>Utente</th><th>Username</th><th>Ufficio</th><th>Ruolo</th><th>Livello</th><th>Stato</th><th></th></tr></thead>
-    <tbody>{% for u in rows %}
+    <tbody>
+    {% for riga in rows %}
     <tr>
-      <td><strong>{{ u['nome'] }} {{ u['cognome'] }}</strong><br><span style="font-size:.74rem;color:var(--mut)">{{ u['email'] or '' }}</span></td>
-      <td style="font-family:monospace;font-size:.84rem">{{ u['username'] }}</td>
-      <td style="font-size:.79rem">{{ u['ufficio'] }}</td>
-      <td style="font-size:.79rem;color:var(--mut)">{{ u['ruolo'] }}</td>
+      <td>
+        <strong>{{ riga.nome }} {{ riga.cognome }}</strong><br>
+        <span style="font-size:.74rem;color:var(--mut)">{{ riga.email or '' }}</span>
+      </td>
+      <td style="font-family:monospace;font-size:.84rem">{{ riga.username }}</td>
+      <td style="font-size:.79rem">{{ riga.ufficio }}</td>
+      <td style="font-size:.79rem;color:var(--mut)">{{ riga.ruolo or '—' }}</td>
       <td>
         {% set lc={'admin':'#7c3aed','master':'#1a3a6b','ufficio_acquisti':'#065f46','richiedente':'#92400e'} %}
-        <span class="bdg" style="background:{{ lc.get(u['livello'],'#64748b') }}20;color:{{ lc.get(u['livello'],'#64748b') }}">
-          {{ u['livello']|replace('_',' ')|title }}
+        <span class="bdg" style="background:{{ lc.get(riga.livello,'#64748b') }}20;color:{{ lc.get(riga.livello,'#64748b') }}">
+          {{ riga.livello|replace('_',' ')|title }}
         </span>
       </td>
-      <td><span class="bdg {{ 'bl' if u['attivo'] else 'ba' }}">{{ 'Attivo' if u['attivo'] else 'Disattivo' }}</span></td>
-      <td><button class="btn bo bs" onclick="modifica({{ u|tojson|safe }})">✏️</button></td>
+      <td>
+        <span class="bdg {{ 'bl' if riga.attivo else 'ba' }}">
+          {{ 'Attivo' if riga.attivo else 'Disattivo' }}
+        </span>
+      </td>
+      <td>
+        <button class="btn bo bs" onclick='apriModifica(
+          {{ riga.id }},
+          "{{ riga.nome }}",
+          "{{ riga.cognome }}",
+          "{{ riga.username }}",
+          "{{ riga.ufficio }}",
+          "{{ riga.ruolo or "" }}",
+          "{{ riga.email or "" }}",
+          "{{ riga.telefono or "" }}",
+          "{{ riga.livello }}",
+          {{ riga.attivo }}
+        )'>✏️ Modifica</button>
+      </td>
     </tr>
-    {% endfor %}</tbody>
+    {% endfor %}
+    </tbody>
   </table></div>
 </div>
 
+<!-- MODALE -->
 <div id="modale" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;margin-bottom:1.2rem">
-      <h3 id="mtit" style="font-size:1rem;font-weight:700">Nuovo Utente</h3>
-      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--mut)">✕</button>
+  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;margin:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
+      <h3 id="mtit" style="font-size:1rem;font-weight:700;color:var(--blu)">Nuovo Utente</h3>
+      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--mut)">✕</button>
     </div>
     <form method="POST" action="{{ url_for('ana_utenti_salva') }}">
-      <input type="hidden" name="id" id="u-id">
+      <input type="hidden" name="id" id="m-id">
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Nome *</div><input class="fi" name="nome" id="u-nome" required></div>
-        <div class="fg"><div class="fl">Cognome *</div><input class="fi" name="cognome" id="u-cog" required></div>
+        <div class="fg"><div class="fl">Nome *</div><input class="fi" name="nome" id="m-nome" required></div>
+        <div class="fg"><div class="fl">Cognome *</div><input class="fi" name="cognome" id="m-cog" required></div>
       </div>
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Username *</div><input class="fi" name="username" id="u-usr" required></div>
-        <div class="fg"><div class="fl">Password <span id="pw-hint" style="color:var(--mut);font-weight:400;text-transform:none">(lascia vuoto per non cambiare)</span></div><input class="fi" name="password" id="u-pw" type="password" placeholder="••••••••"></div>
+        <div class="fg"><div class="fl">Username *</div><input class="fi" name="username" id="m-usr" required></div>
+        <div class="fg">
+          <div class="fl">Password <span id="m-pw-hint" style="color:var(--mut);font-weight:400;text-transform:none;font-size:.68rem"></span></div>
+          <input class="fi" name="password" id="m-pw" type="password" placeholder="••••••••">
+        </div>
       </div>
       <div class="g2" style="margin-bottom:.8rem">
         <div class="fg"><div class="fl">Ufficio *</div>
-          <select class="fs" name="ufficio" id="u-uff">
-            {% for uf in ['Direzione','Ufficio Tecnico','Ufficio Amministrativo','Ufficio Acquisti','Magazzino'] %}<option>{{ uf }}</option>{% endfor %}
+          <select class="fs" name="ufficio" id="m-uff">
+            {% for uf in ['Direzione','Ufficio Tecnico','Ufficio Amministrativo','Ufficio Acquisti','Magazzino'] %}
+            <option value="{{ uf }}">{{ uf }}</option>
+            {% endfor %}
           </select>
         </div>
-        <div class="fg"><div class="fl">Ruolo</div><input class="fi" name="ruolo" id="u-ruolo" placeholder="Es. Geometra"></div>
+        <div class="fg"><div class="fl">Ruolo</div><input class="fi" name="ruolo" id="m-ruolo" placeholder="Es. Geometra"></div>
       </div>
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Email</div><input class="fi" name="email" id="u-email" type="email"></div>
-        <div class="fg"><div class="fl">Telefono</div><input class="fi" name="telefono" id="u-tel"></div>
+        <div class="fg"><div class="fl">Email</div><input class="fi" name="email" id="m-email" type="email"></div>
+        <div class="fg"><div class="fl">Telefono</div><input class="fi" name="telefono" id="m-tel"></div>
       </div>
-      <div class="fg" style="margin-bottom:1.2rem"><div class="fl">Livello autorizzazione *</div>
-        <select class="fs" name="livello" id="u-liv">
-          <option value="richiedente">Richiedente</option>
-          <option value="ufficio_acquisti">Ufficio Acquisti</option>
-          <option value="master">Master</option>
-          <option value="admin">Admin</option>
-        </select>
+      <div class="g2" style="margin-bottom:.8rem">
+        <div class="fg"><div class="fl">Livello autorizzazione *</div>
+          <select class="fs" name="livello" id="m-liv">
+            <option value="richiedente">Richiedente</option>
+            <option value="ufficio_acquisti">Ufficio Acquisti</option>
+            <option value="master">Master</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="fg"><div class="fl">Stato</div>
+          <select class="fs" name="attivo" id="m-attivo">
+            <option value="1">Attivo</option>
+            <option value="0">Disattivo</option>
+          </select>
+        </div>
       </div>
-      <div style="display:flex;gap:.7rem;justify-content:flex-end">
+      <div style="display:flex;gap:.7rem;justify-content:flex-end;margin-top:1rem">
         <button type="button" class="btn bo" onclick="chiudi()">Annulla</button>
         <button type="submit" class="btn bp">💾 Salva</button>
       </div>
@@ -72,29 +108,45 @@
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-function apri(){
-  document.getElementById('mtit').textContent='Nuovo Utente';
-  document.getElementById('pw-hint').textContent='';
-  ['id','nome','cog','usr','pw','ruolo','email','tel'].forEach(function(k){document.getElementById('u-'+k).value='';});
-  document.getElementById('modale').style.display='flex';
+function apriNuovo() {
+  document.getElementById('mtit').textContent = 'Nuovo Utente';
+  document.getElementById('m-pw-hint').textContent = '';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-nome').value = '';
+  document.getElementById('m-cog').value = '';
+  document.getElementById('m-usr').value = '';
+  document.getElementById('m-pw').value = '';
+  document.getElementById('m-uff').value = 'Ufficio Tecnico';
+  document.getElementById('m-ruolo').value = '';
+  document.getElementById('m-email').value = '';
+  document.getElementById('m-tel').value = '';
+  document.getElementById('m-liv').value = 'richiedente';
+  document.getElementById('m-attivo').value = '1';
+  document.getElementById('modale').style.display = 'flex';
 }
-function modifica(u){
-  document.getElementById('mtit').textContent='Modifica '+u.nome+' '+u.cognome;
-  document.getElementById('pw-hint').textContent='(lascia vuoto per non cambiare)';
-  document.getElementById('u-id').value=u.id;
-  document.getElementById('u-nome').value=u.nome;
-  document.getElementById('u-cog').value=u.cognome;
-  document.getElementById('u-usr').value=u.username;
-  document.getElementById('u-pw').value='';
-  document.getElementById('u-uff').value=u.ufficio;
-  document.getElementById('u-ruolo').value=u.ruolo||'';
-  document.getElementById('u-email').value=u.email||'';
-  document.getElementById('u-tel').value=u.telefono||'';
-  document.getElementById('u-liv').value=u.livello;
-  document.getElementById('modale').style.display='flex';
+
+function apriModifica(id, nome, cognome, username, ufficio, ruolo, email, telefono, livello, attivo) {
+  document.getElementById('mtit').textContent = 'Modifica: ' + nome + ' ' + cognome;
+  document.getElementById('m-pw-hint').textContent = '(lascia vuoto per non cambiare)';
+  document.getElementById('m-id').value = id;
+  document.getElementById('m-nome').value = nome;
+  document.getElementById('m-cog').value = cognome;
+  document.getElementById('m-usr').value = username;
+  document.getElementById('m-pw').value = '';
+  document.getElementById('m-uff').value = ufficio;
+  document.getElementById('m-ruolo').value = ruolo;
+  document.getElementById('m-email').value = email;
+  document.getElementById('m-tel').value = telefono;
+  document.getElementById('m-liv').value = livello;
+  document.getElementById('m-attivo').value = attivo ? '1' : '0';
+  document.getElementById('modale').style.display = 'flex';
 }
-function chiudi(){document.getElementById('modale').style.display='none';}
+
+function chiudi() {
+  document.getElementById('modale').style.display = 'none';
+}
 </script>
 {% endblock %}
