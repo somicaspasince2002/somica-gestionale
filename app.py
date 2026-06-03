@@ -15,6 +15,7 @@ def get_db():
         g.db = sqlite3.connect(DB)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys=ON")
+        # Inizializza DB se vuoto
         tables = g.db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         if not tables:
             init_db()
@@ -176,25 +177,34 @@ def ana_utenti():
 def ana_utenti_salva():
     if session.get('liv') != 'admin': return redirect(url_for('dashboard'))
     db = get_db()
-    uid2 = request.form.get('id')
-    pw_raw = request.form.get('password','').strip()
+    uid2    = request.form.get('id','').strip()
+    pw_raw  = request.form.get('password','').strip()
+    nome    = request.form.get('nome','').strip()
+    cognome = request.form.get('cognome','').strip()
+    ufficio = request.form.get('ufficio','').strip()
+    ruolo   = request.form.get('ruolo','').strip()
+    email   = request.form.get('email','').strip()
+    telefono= request.form.get('telefono','').strip()
+    livello = request.form.get('livello','richiedente').strip()
+    attivo  = 1 if request.form.get('attivo','1') == '1' else 0
     if uid2:
         if pw_raw:
-            db.execute("UPDATE utenti SET nome=?,cognome=?,ufficio=?,ruolo=?,email=?,telefono=?,livello=?,password=? WHERE id=?",
-                (request.form['nome'],request.form['cognome'],request.form['ufficio'],
-                 request.form['ruolo'],request.form.get('email',''),request.form.get('telefono',''),
-                 request.form['livello'],hashlib.sha256(pw_raw.encode()).hexdigest(),uid2))
+            db.execute(
+                "UPDATE utenti SET nome=?,cognome=?,ufficio=?,ruolo=?,email=?,telefono=?,livello=?,attivo=?,password=? WHERE id=?",
+                (nome,cognome,ufficio,ruolo,email,telefono,livello,attivo,
+                 hashlib.sha256(pw_raw.encode()).hexdigest(),uid2))
         else:
-            db.execute("UPDATE utenti SET nome=?,cognome=?,ufficio=?,ruolo=?,email=?,telefono=?,livello=? WHERE id=?",
-                (request.form['nome'],request.form['cognome'],request.form['ufficio'],
-                 request.form['ruolo'],request.form.get('email',''),request.form.get('telefono',''),
-                 request.form['livello'],uid2))
+            db.execute(
+                "UPDATE utenti SET nome=?,cognome=?,ufficio=?,ruolo=?,email=?,telefono=?,livello=?,attivo=? WHERE id=?",
+                (nome,cognome,ufficio,ruolo,email,telefono,livello,attivo,uid2))
     else:
-        db.execute("INSERT INTO utenti (nome,cognome,username,password,ufficio,ruolo,email,telefono,livello) VALUES (?,?,?,?,?,?,?,?,?)",
-            (request.form['nome'],request.form['cognome'],request.form['username'],
-             hashlib.sha256(pw_raw.encode()).hexdigest(),request.form['ufficio'],
-             request.form['ruolo'],request.form.get('email',''),request.form.get('telefono',''),
-             request.form['livello']))
+        if not pw_raw:
+            pw_raw = 'somica2024'
+        db.execute(
+            "INSERT INTO utenti (nome,cognome,username,password,ufficio,ruolo,email,telefono,livello,attivo) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (nome,cognome,request.form.get('username','').strip(),
+             hashlib.sha256(pw_raw.encode()).hexdigest(),
+             ufficio,ruolo,email,telefono,livello,attivo))
     db.commit()
     return redirect(url_for('ana_utenti'))
 
