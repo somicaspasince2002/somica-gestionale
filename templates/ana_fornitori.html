@@ -4,91 +4,124 @@
 {% block content %}
 <div class="ph">
   <div><h1>Fornitori</h1><div class="meta">{{ rows|length }} fornitori registrati</div></div>
-  <button class="btn bp" onclick="apriModale()">＋ Nuovo Fornitore</button>
+  <button class="btn bp" onclick="apriNuovo()">＋ Nuovo Fornitore</button>
 </div>
 <div class="card">
-  {% if rows %}<div style="overflow-x:auto"><table>
+  {% if rows %}
+  <div style="overflow-x:auto"><table>
     <thead><tr><th>Ragione Sociale</th><th>Tipo</th><th>P.IVA</th><th>PEC / Email</th><th>Telefono</th><th>Referente</th><th></th></tr></thead>
-    <tbody>{% for f in rows %}
+    <tbody>
+    {% for f in rows %}
     <tr>
-      <td><strong>{{ f['ragione_sociale'] }}</strong></td>
-      <td style="font-size:.79rem;color:var(--mut)">{{ f['tipologia'] or '—' }}</td>
-      <td style="font-size:.79rem">{{ f['partita_iva'] or '—' }}</td>
-      <td style="font-size:.79rem">{{ f['pec'] or f['email'] or '—' }}</td>
-      <td style="font-size:.79rem">{{ f['telefono'] or '—' }}</td>
-      <td style="font-size:.79rem">{{ f['referente'] or '—' }}</td>
-      <td><button class="btn bo bs" onclick="modificaFornitore({{ f|tojson|safe }})">✏️</button></td>
+      <td><strong>{{ f.ragione_sociale }}</strong></td>
+      <td style="font-size:.79rem;color:var(--mut)">{{ f.tipologia or '—' }}</td>
+      <td style="font-size:.79rem">{{ f.partita_iva or '—' }}</td>
+      <td style="font-size:.79rem">{{ f.pec or f.email or '—' }}</td>
+      <td style="font-size:.79rem">{{ f.telefono or '—' }}</td>
+      <td style="font-size:.79rem">{{ f.referente or '—' }}</td>
+      <td>
+        <button class="btn bo bs" onclick="apriModifica(
+          {{ f.id }},
+          '{{ f.tipologia or '' }}',
+          '{{ f.ragione_sociale }}',
+          '{{ f.indirizzo or '' }}',
+          '{{ f.comune or '' }}',
+          '{{ f.provincia or '' }}',
+          '{{ f.cap or '' }}',
+          '{{ f.partita_iva or '' }}',
+          '{{ f.codice_fiscale or '' }}',
+          '{{ f.pec or '' }}',
+          '{{ f.email or '' }}',
+          '{{ f.telefono or '' }}',
+          '{{ f.referente or '' }}'
+        )">✏️ Modifica</button>
+      </td>
     </tr>
-    {% endfor %}</tbody>
+    {% endfor %}
+    </tbody>
   </table></div>
-  {% else %}<div class="emp"><div class="ei">🏢</div><p>Nessun fornitore ancora. Aggiungine uno!</p></div>{% endif %}
+  {% else %}
+  <div class="emp"><div class="ei">🏢</div><p>Nessun fornitore ancora. Aggiungine uno!</p></div>
+  {% endif %}
 </div>
 
-<div id="modaleF" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:620px;max-height:90vh;overflow-y:auto">
+<!-- MODALE -->
+<div id="modale" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;margin:1rem">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
-      <h3 id="modaleF-tit" style="font-size:1rem;font-weight:700">Nuovo Fornitore</h3>
-      <button onclick="chiudiModale()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--mut)">✕</button>
+      <h3 id="mtit" style="font-size:1rem;font-weight:700;color:var(--blu)">Nuovo Fornitore</h3>
+      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--mut)">✕</button>
     </div>
     <form method="POST" action="{{ url_for('ana_fornitori_salva') }}">
-      <input type="hidden" name="id" id="f-id">
+      <input type="hidden" name="id" id="m-id">
       <div class="g2" style="margin-bottom:.8rem">
         <div class="fg"><div class="fl">Tipologia</div>
-          <select class="fs" name="tipologia">
+          <select class="fs" name="tipologia" id="m-tip">
             <option value="Ditta">Ditta</option>
             <option value="Libero Professionista">Libero Professionista</option>
           </select>
         </div>
-        <div class="fg"><div class="fl">Ragione Sociale *</div><input class="fi" type="text" name="ragione_sociale" id="f-rs" required placeholder="Nome ditta o professionista"></div>
+        <div class="fg"><div class="fl">Ragione Sociale *</div>
+          <input class="fi" type="text" name="ragione_sociale" id="m-rs" required placeholder="Nome ditta o professionista">
+        </div>
       </div>
       <div class="g3" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Indirizzo</div><input class="fi" type="text" name="indirizzo" id="f-ind"></div>
-        <div class="fg"><div class="fl">Comune</div><input class="fi" type="text" name="comune" id="f-com"></div>
-        <div class="fg"><div class="fl">Prov.</div><input class="fi" type="text" name="provincia" id="f-prov" maxlength="2"></div>
+        <div class="fg"><div class="fl">Indirizzo</div><input class="fi" type="text" name="indirizzo" id="m-ind"></div>
+        <div class="fg"><div class="fl">Comune</div><input class="fi" type="text" name="comune" id="m-com"></div>
+        <div class="fg"><div class="fl">Prov.</div><input class="fi" type="text" name="provincia" id="m-prov" maxlength="2"></div>
       </div>
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Partita IVA</div><input class="fi" type="text" name="partita_iva" id="f-piva"></div>
-        <div class="fg"><div class="fl">Codice Fiscale</div><input class="fi" type="text" name="codice_fiscale" id="f-cf"></div>
+        <div class="fg"><div class="fl">Partita IVA</div><input class="fi" type="text" name="partita_iva" id="m-piva"></div>
+        <div class="fg"><div class="fl">Codice Fiscale</div><input class="fi" type="text" name="codice_fiscale" id="m-cf"></div>
       </div>
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">PEC</div><input class="fi" type="email" name="pec" id="f-pec"></div>
-        <div class="fg"><div class="fl">Email</div><input class="fi" type="email" name="email" id="f-em"></div>
+        <div class="fg"><div class="fl">PEC</div><input class="fi" type="email" name="pec" id="m-pec"></div>
+        <div class="fg"><div class="fl">Email</div><input class="fi" type="email" name="email" id="m-em"></div>
       </div>
       <div class="g2" style="margin-bottom:1.2rem">
-        <div class="fg"><div class="fl">Telefono</div><input class="fi" type="text" name="telefono" id="f-tel"></div>
-        <div class="fg"><div class="fl">Referente</div><input class="fi" type="text" name="referente" id="f-ref"></div>
+        <div class="fg"><div class="fl">Telefono</div><input class="fi" type="text" name="telefono" id="m-tel"></div>
+        <div class="fg"><div class="fl">Referente</div><input class="fi" type="text" name="referente" id="m-ref"></div>
       </div>
       <div style="display:flex;gap:.7rem;justify-content:flex-end">
-        <button type="button" class="btn bo" onclick="chiudiModale()">Annulla</button>
+        <button type="button" class="btn bo" onclick="chiudi()">Annulla</button>
         <button type="submit" class="btn bp">💾 Salva</button>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-function apriModale(){
-  document.getElementById('modaleF-tit').textContent='Nuovo Fornitore';
-  document.getElementById('f-id').value='';
-  ['rs','ind','com','prov','piva','cf','pec','em','tel','ref'].forEach(function(k){document.getElementById('f-'+k).value='';});
-  document.getElementById('modaleF').style.display='flex';
+function apriNuovo() {
+  document.getElementById('mtit').textContent = 'Nuovo Fornitore';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-tip').value = 'Ditta';
+  ['rs','ind','com','prov','piva','cf','pec','em','tel','ref'].forEach(function(k) {
+    document.getElementById('m-'+k).value = '';
+  });
+  document.getElementById('modale').style.display = 'flex';
 }
-function modificaFornitore(f){
-  document.getElementById('modaleF-tit').textContent='Modifica Fornitore';
-  document.getElementById('f-id').value=f.id;
-  document.getElementById('f-rs').value=f.ragione_sociale||'';
-  document.getElementById('f-ind').value=f.indirizzo||'';
-  document.getElementById('f-com').value=f.comune||'';
-  document.getElementById('f-prov').value=f.provincia||'';
-  document.getElementById('f-piva').value=f.partita_iva||'';
-  document.getElementById('f-cf').value=f.codice_fiscale||'';
-  document.getElementById('f-pec').value=f.pec||'';
-  document.getElementById('f-em').value=f.email||'';
-  document.getElementById('f-tel').value=f.telefono||'';
-  document.getElementById('f-ref').value=f.referente||'';
-  document.getElementById('modaleF').style.display='flex';
+
+function apriModifica(id, tip, rs, ind, com, prov, cap, piva, cf, pec, em, tel, ref) {
+  document.getElementById('mtit').textContent = 'Modifica: ' + rs;
+  document.getElementById('m-id').value = id;
+  document.getElementById('m-tip').value = tip || 'Ditta';
+  document.getElementById('m-rs').value = rs;
+  document.getElementById('m-ind').value = ind;
+  document.getElementById('m-com').value = com;
+  document.getElementById('m-prov').value = prov;
+  document.getElementById('m-piva').value = piva;
+  document.getElementById('m-cf').value = cf;
+  document.getElementById('m-pec').value = pec;
+  document.getElementById('m-em').value = em;
+  document.getElementById('m-tel').value = tel;
+  document.getElementById('m-ref').value = ref;
+  document.getElementById('modale').style.display = 'flex';
 }
-function chiudiModale(){document.getElementById('modaleF').style.display='none';}
+
+function chiudi() {
+  document.getElementById('modale').style.display = 'none';
+}
 </script>
 {% endblock %}
