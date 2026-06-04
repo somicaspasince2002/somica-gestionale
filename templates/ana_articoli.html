@@ -4,52 +4,77 @@
 {% block content %}
 <div class="ph">
   <div><h1>Articoli</h1><div class="meta">{{ rows|length }} articoli registrati</div></div>
-  <button class="btn bp" onclick="apriModale()">＋ Nuovo Articolo</button>
-</div>
-<div class="card" style="margin-bottom:1rem">
-  <div style="display:flex;gap:.7rem;flex-wrap:wrap">
-    {% for cat in categorie %}
-    <button class="btn bo bs" onclick="filtro('{{ cat }}')" id="btn-{{ loop.index }}">{{ cat }}</button>
-    {% endfor %}
-    <button class="btn bp bs" onclick="filtro('')">Tutti</button>
-  </div>
-</div>
-<div class="card">
-  {% if rows %}<div style="overflow-x:auto"><table id="tab-art">
-    <thead><tr><th>Codice</th><th>Descrizione</th><th>Categoria</th><th>U.M.</th><th>Note</th><th></th></tr></thead>
-    <tbody>{% for a in rows %}
-    <tr data-cat="{{ a['categoria'] }}">
-      <td style="font-size:.79rem;color:var(--mut)">{{ a['codice'] or '—' }}</td>
-      <td><strong>{{ a['descrizione'] }}</strong></td>
-      <td><span class="bdg bb" style="font-size:.69rem">{{ a['categoria'] or '—' }}</span></td>
-      <td>{{ a['unita_misura'] or '—' }}</td>
-      <td style="font-size:.79rem;color:var(--mut)">{{ a['note'] or '—' }}</td>
-      <td><button class="btn bo bs" onclick="modifica({{ a|tojson|safe }})">✏️</button></td>
-    </tr>
-    {% endfor %}</tbody>
-  </table></div>
-  {% else %}<div class="emp"><div class="ei">📦</div><p>Nessun articolo. Aggiungine uno!</p></div>{% endif %}
+  <button class="btn bp" onclick="apriNuovo()">＋ Nuovo Articolo</button>
 </div>
 
-<div id="modaleA" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:500px">
-    <div style="display:flex;justify-content:space-between;margin-bottom:1.2rem">
-      <h3 id="modaleA-tit" style="font-size:1rem;font-weight:700">Nuovo Articolo</h3>
-      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--mut)">✕</button>
+<div class="card" style="margin-bottom:1rem">
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+    <span style="font-size:.8rem;font-weight:600;color:var(--mut)">Filtra:</span>
+    <button class="btn bp bs" onclick="filtro('')">Tutti</button>
+    {% for cat in categorie %}
+    <button class="btn bo bs" onclick="filtro('{{ cat }}')">{{ cat }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  {% if rows %}
+  <div style="overflow-x:auto"><table id="tab-art">
+    <thead><tr><th>Codice</th><th>Descrizione</th><th>Categoria</th><th>U.M.</th><th>Note</th><th></th></tr></thead>
+    <tbody>
+    {% for a in rows %}
+    <tr data-cat="{{ a.categoria }}">
+      <td style="font-size:.79rem;color:var(--mut)">{{ a.codice or '—' }}</td>
+      <td><strong>{{ a.descrizione }}</strong></td>
+      <td><span class="bdg bb" style="font-size:.69rem">{{ a.categoria or '—' }}</span></td>
+      <td>{{ a.unita_misura or '—' }}</td>
+      <td style="font-size:.79rem;color:var(--mut)">{{ a.note or '—' }}</td>
+      <td>
+        <button class="btn bo bs" onclick="apriModifica(
+          {{ a.id }},
+          '{{ a.codice or '' }}',
+          '{{ a.descrizione }}',
+          '{{ a.categoria or '' }}',
+          '{{ a.unita_misura or '' }}',
+          '{{ a.note or '' }}'
+        )">✏️ Modifica</button>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="emp"><div class="ei">📦</div><p>Nessun articolo. Aggiungine uno!</p></div>
+  {% endif %}
+</div>
+
+<!-- MODALE -->
+<div id="modale" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:1.8rem;width:100%;max-width:500px;margin:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
+      <h3 id="mtit" style="font-size:1rem;font-weight:700;color:var(--blu)">Nuovo Articolo</h3>
+      <button onclick="chiudi()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--mut)">✕</button>
     </div>
     <form method="POST" action="{{ url_for('ana_articoli_salva') }}">
-      <input type="hidden" name="id" id="a-id">
+      <input type="hidden" name="id" id="m-id">
       <div class="g2" style="margin-bottom:.8rem">
-        <div class="fg"><div class="fl">Codice</div><input class="fi" name="codice" id="a-cod" placeholder="Es. MAT-001"></div>
-        <div class="fg"><div class="fl">U.M.</div><input class="fi" name="unita_misura" id="a-um" placeholder="cad, kg, m..."></div>
+        <div class="fg"><div class="fl">Codice</div><input class="fi" name="codice" id="m-cod" placeholder="Es. MAT-001"></div>
+        <div class="fg"><div class="fl">U.M.</div><input class="fi" name="unita_misura" id="m-um" placeholder="cad, kg, m..."></div>
       </div>
-      <div class="fg" style="margin-bottom:.8rem"><div class="fl">Descrizione *</div><input class="fi" name="descrizione" id="a-desc" required placeholder="Descrizione articolo"></div>
-      <div class="fg" style="margin-bottom:.8rem"><div class="fl">Categoria</div>
-        <select class="fs" name="categoria" id="a-cat">
-          {% for cat in categorie %}<option>{{ cat }}</option>{% endfor %}
+      <div class="fg" style="margin-bottom:.8rem">
+        <div class="fl">Descrizione *</div>
+        <input class="fi" name="descrizione" id="m-desc" required placeholder="Descrizione articolo">
+      </div>
+      <div class="fg" style="margin-bottom:.8rem">
+        <div class="fl">Categoria</div>
+        <select class="fs" name="categoria" id="m-cat">
+          {% for cat in categorie %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
         </select>
       </div>
-      <div class="fg" style="margin-bottom:1.2rem"><div class="fl">Note</div><input class="fi" name="note" id="a-note"></div>
+      <div class="fg" style="margin-bottom:1.2rem">
+        <div class="fl">Note</div>
+        <input class="fi" name="note" id="m-note">
+      </div>
       <div style="display:flex;gap:.7rem;justify-content:flex-end">
         <button type="button" class="btn bo" onclick="chiudi()">Annulla</button>
         <button type="submit" class="btn bp">💾 Salva</button>
@@ -58,27 +83,37 @@
   </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
-function apriModale(){
-  document.getElementById('modaleA-tit').textContent='Nuovo Articolo';
-  ['id','cod','desc','um','note'].forEach(function(k){document.getElementById('a-'+k).value='';});
-  document.getElementById('modaleA').style.display='flex';
+function apriNuovo() {
+  document.getElementById('mtit').textContent = 'Nuovo Articolo';
+  document.getElementById('m-id').value = '';
+  document.getElementById('m-cod').value = '';
+  document.getElementById('m-desc').value = '';
+  document.getElementById('m-um').value = '';
+  document.getElementById('m-note').value = '';
+  document.getElementById('modale').style.display = 'flex';
 }
-function modifica(a){
-  document.getElementById('modaleA-tit').textContent='Modifica Articolo';
-  document.getElementById('a-id').value=a.id;
-  document.getElementById('a-cod').value=a.codice||'';
-  document.getElementById('a-desc').value=a.descrizione||'';
-  document.getElementById('a-um').value=a.unita_misura||'';
-  document.getElementById('a-cat').value=a.categoria||'';
-  document.getElementById('a-note').value=a.note||'';
-  document.getElementById('modaleA').style.display='flex';
+
+function apriModifica(id, cod, desc, cat, um, note) {
+  document.getElementById('mtit').textContent = 'Modifica: ' + desc;
+  document.getElementById('m-id').value = id;
+  document.getElementById('m-cod').value = cod;
+  document.getElementById('m-desc').value = desc;
+  document.getElementById('m-cat').value = cat;
+  document.getElementById('m-um').value = um;
+  document.getElementById('m-note').value = note;
+  document.getElementById('modale').style.display = 'flex';
 }
-function chiudi(){document.getElementById('modaleA').style.display='none';}
-function filtro(cat){
-  document.querySelectorAll('#tab-art tbody tr').forEach(function(tr){
-    tr.style.display=(!cat||tr.dataset.cat===cat)?'':'none';
+
+function chiudi() {
+  document.getElementById('modale').style.display = 'none';
+}
+
+function filtro(cat) {
+  document.querySelectorAll('#tab-art tbody tr').forEach(function(tr) {
+    tr.style.display = (!cat || tr.dataset.cat === cat) ? '' : 'none';
   });
 }
 </script>
