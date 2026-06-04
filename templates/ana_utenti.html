@@ -31,6 +31,7 @@
         </span>
       </td>
       <td>
+        <div style="display:flex;gap:.4rem">
         <button class="btn bo bs" onclick='apriModifica(
           {{ riga.id }},
           "{{ riga.nome }}",
@@ -43,6 +44,12 @@
           "{{ riga.livello }}",
           {{ riga.attivo }}
         )'>✏️ Modifica</button>
+        {% if riga.id != session.get('uid') %}
+        <form method="POST" action="{{ url_for('ana_utenti_elimina', uid=riga.id) }}" onsubmit="return confirm('Disattivare utente {{ riga.nome }} {{ riga.cognome }}?')" style="display:inline">
+          <button type="submit" class="btn bs" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5">🗑 Elimina</button>
+        </form>
+        {% endif %}
+        </div>
       </td>
     </tr>
     {% endfor %}
