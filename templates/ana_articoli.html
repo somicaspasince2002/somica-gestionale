@@ -30,6 +30,7 @@
       <td>{{ a.unita_misura or '—' }}</td>
       <td style="font-size:.79rem;color:var(--mut)">{{ a.note or '—' }}</td>
       <td>
+        <div style="display:flex;gap:.4rem">
         <button class="btn bo bs" onclick="apriModifica(
           {{ a.id }},
           '{{ a.codice or '' }}',
@@ -38,6 +39,10 @@
           '{{ a.unita_misura or '' }}',
           '{{ a.note or '' }}'
         )">✏️ Modifica</button>
+        <form method="POST" action="{{ url_for('ana_articoli_elimina', aid=a.id) }}" onsubmit="return confirm('Eliminare {{ a.descrizione }}?')">
+          <button type="submit" class="btn bs" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5">🗑 Elimina</button>
+        </form>
+        </div>
       </td>
     </tr>
     {% endfor %}
