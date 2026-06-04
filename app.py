@@ -238,6 +238,26 @@ def ana_fornitori_elimina(fid):
     get_db().execute("UPDATE fornitori SET attivo=0 WHERE id=?", (fid,)); get_db().commit()
     return redirect(url_for('ana_fornitori'))
 
+@app.route('/anagrafiche/articoli/<int:aid>/elimina', methods=['POST'])
+@login_req
+def ana_articoli_elimina(aid):
+    get_db().execute("DELETE FROM articoli WHERE id=?", (aid,)); get_db().commit()
+    return redirect(url_for('ana_articoli'))
+
+@app.route('/anagrafiche/commesse/<int:cid>/elimina', methods=['POST'])
+@login_req
+def ana_commesse_elimina(cid):
+    get_db().execute("DELETE FROM commesse WHERE id=?", (cid,)); get_db().commit()
+    return redirect(url_for('ana_commesse'))
+
+@app.route('/anagrafiche/utenti/<int:uid>/elimina', methods=['POST'])
+@login_req
+def ana_utenti_elimina(uid):
+    if uid == session.get('uid'):
+        return redirect(url_for('ana_utenti'))  # Non puoi eliminare te stesso
+    get_db().execute("UPDATE utenti SET attivo=0 WHERE id=?", (uid,)); get_db().commit()
+    return redirect(url_for('ana_utenti'))
+
 @app.route('/api/fornitore/<int:fid>')
 @login_req
 def api_fornitore(fid):
