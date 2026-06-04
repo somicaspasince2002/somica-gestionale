@@ -489,7 +489,45 @@ def dettaglio_rif(rfid):
         " FROM richieste_fornitori rf LEFT JOIN fornitori f ON rf.fornitore_id=f.id WHERE rf.id=?",(rfid,)).fetchone()
     if not rf: return redirect(url_for('lista_rif'))
     arti=db.execute("SELECT * FROM rif_articoli WHERE rif_id=? ORDER BY id",(rfid,)).fetchall()
-    return render_template('dettaglio_rif.html', u=u, rf=rf, arti=arti)
+    fornitori_lista=db.execute("SELECT id,ragione_sociale FROM fornitori WHERE attivo=1 ORDER BY ragione_sociale").fetchall()
+    fornitori_inviati=db.execute(
+        "SELECT rf2.*,f2.ragione_sociale fn FROM richieste_fornitori rf2"
+        " LEFT JOIN fornitori f2 ON rf2.fornitore_id=f2.id"
+        " WHERE rf2.oggetto=? AND rf2.id!=? ORDER BY rf2.id",
+        (rf['oggetto'], rfid)).fetchall()
+    return render_template('dettaglio_rif.html', u=u, rf=rf, arti=arti,
+        fornitori_lista=fornitori_lista, fornitori_inviati=fornitori_inviati)
+
+
+@app.route('/fornitori/richieste/<int:rfid>/multi', methods=['POST'])
+@login_req
+def duplica_rif_multi(rfid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    rf=db.execute("SELECT * FROM richieste_fornitori WHERE id=?",(rfid,)).fetchone()
+    if not rf: return redirect(url_for('lista_rif'))
+    arti=db.execute("SELECT * FROM rif_articoli WHERE rif_id=? ORDER BY id",(rfid,)).fetchall()
+    creati=[]
+    for i in range(1,6):
+        forn_id=request.form.get('fornitore_'+str(i),'').strip()
+        if not forn_id: continue
+        anno=datetime.now().year
+        n=db.execute("SELECT COUNT(*) FROM richieste_fornitori WHERE strftime('%Y',data)=?",(str(anno),)).fetchone()[0]
+        numero='RIF-%d-%04d'%(anno,n+1)
+        cur=db.execute(
+            "INSERT INTO richieste_fornitori (numero,data,fornitore_id,tipologia,oggetto,testo_intro,note,stato,creato_da,richiesta_acq_id)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (numero,rf['data'],forn_id,rf['tipologia'],rf['oggetto'],
+             rf['testo_intro'],rf['note'],'bozza',u['id'],rf['richiesta_acq_id']))
+        new_rfid=cur.lastrowid
+        for a in arti:
+            db.execute("INSERT INTO rif_articoli (rif_id,descrizione,unita_misura,quantita,note) VALUES (?,?,?,?,?)",
+                (new_rfid,a['descrizione'],a['unita_misura'],a['quantita'],a['note']))
+        creati.append(numero)
+        db.commit()
+    log('multi_invio','Create '+str(len(creati))+' richieste da '+rf['numero']+': '+', '.join(creati),'rif',rfid)
+    return redirect(url_for('dettaglio_rif',rfid=rfid))
 
 @app.route('/fornitori/richieste/<int:rfid>/stampa')
 @login_req
