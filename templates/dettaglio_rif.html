@@ -9,6 +9,7 @@
   <div style="display:flex;gap:.6rem;flex-wrap:wrap">
     <span class="bdg {{ 'bb' if rf['stato']=='bozza' else 'bl' }}" style="font-size:.8rem;padding:.3rem .9rem">{{ rf['stato']|title }}</span>
     <a href="{{ url_for('stampa_rif',rfid=rf['id']) }}" class="btn bv bs" target="_blank">🖨 Stampa / PDF</a>
+    <a href="{{ url_for('nuovo_ordine') }}?from_rif={{ rf['id'] }}" class="btn bp bs">📋 Crea Ordine</a>
     <button class="btn bp bs" onclick="apriMulti()">📤 Invia a più fornitori</button>
     <a href="{{ url_for('lista_rif') }}" class="btn bo bs">← Lista</a>
   </div>
