@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Nuova Richiesta — SO.MI.CA.{% endblock %}
-{% block ptitle %}Nuova Richiesta di Acquisizione{% endblock %}
+{% block title %}{% if modifica %}Modifica Richiesta{% else %}Nuova Richiesta{% endif %} — SO.MI.CA.{% endblock %}
+{% block ptitle %}{% if modifica %}Modifica Richiesta {{ r['numero'] }}{% else %}Nuova Richiesta di Acquisizione{% endif %}{% endblock %}
 {% block extra_css %}
 <style>
 .pri-s{padding:.38rem .5rem;border:1.5px solid var(--brd);border-radius:7px;font-size:.8rem;font-family:inherit;width:100%;outline:none;cursor:pointer}
@@ -24,21 +24,22 @@
 {% endblock %}
 {% block content %}
 <div class="ph">
-  <div><h1>Nuova Richiesta</h1><div class="meta">Compila i campi e salva come bozza oppure invia direttamente all'Ufficio Acquisti</div></div>
-  <a href="{{ url_for('lista_richieste') }}" class="btn bo">← Lista</a>
+  <div><h1>{% if modifica %}Modifica Richiesta{% else %}Nuova Richiesta{% endif %}</h1>
+  <div class="meta">{% if modifica %}Modifica i campi e salva{% else %}Compila i campi e salva come bozza oppure invia direttamente all'Ufficio Acquisti{% endif %}</div></div>
+  <a href="{% if modifica %}{{ url_for('dettaglio_richiesta',rid=r['id']) }}{% else %}{{ url_for('lista_richieste') }}{% endif %}" class="btn bo">← {% if modifica %}Indietro{% else %}Lista{% endif %}</a>
 </div>
 
-<form method="POST" id="frm">
+<form method="POST" id="frm" action="{% if modifica %}{{ url_for('modifica_richiesta',rid=r['id']) }}{% else %}{{ url_for('nuova_richiesta') }}{% endif %}">
 
 <div class="card" style="margin-bottom:1.1rem">
   <div class="st">Dati generali</div>
   <div class="g3" style="margin-bottom:.9rem">
-    <div class="fg"><div class="fl">Numero (auto)</div><input class="fi" value="{{ num_prev }}" disabled style="background:var(--bg);color:var(--mut)"></div>
+    <div class="fg"><div class="fl">Numero</div><input class="fi" value="{{ num_prev }}" disabled style="background:var(--bg);color:var(--mut)"></div>
     <div class="fg"><div class="fl">Data *</div><input class="fi" type="date" name="data" value="{{ oggi }}" required></div>
     <div class="fg"><div class="fl">Ufficio richiedente *</div>
       <select class="fs" name="ufficio_richiedente" required>
         {% for uf in ['Ufficio Tecnico','Ufficio Amministrativo','Magazzino'] %}
-        <option value="{{ uf }}" {{ 'selected' if u['ufficio']==uf }}>{{ uf }}</option>
+        <option value="{{ uf }}" {{ 'selected' if (r and r['ufficio_richiedente']==uf) or (not r and u['ufficio']==uf) }}>{{ uf }}</option>
         {% endfor %}
       </select>
     </div>
@@ -48,7 +49,7 @@
       <select class="fs" name="referente_id">
         <option value="">— seleziona —</option>
         {% for ut in utenti_l %}
-        <option value="{{ ut['id'] }}" {{ 'selected' if ut['id']==u['id'] }}>{{ ut['nome'] }} {{ ut['cognome'] }} — {{ ut['ufficio'] }}</option>
+        <option value="{{ ut['id'] }}" {{ 'selected' if (r and r['referente_id']==ut['id']) or (not r and ut['id']==u['id']) }}>{{ ut['nome'] }} {{ ut['cognome'] }} — {{ ut['ufficio'] }}</option>
         {% endfor %}
       </select>
     </div>
@@ -69,13 +70,17 @@
     <div class="fg"><div class="fl">Tipo acquisizione *</div>
       <select class="fs" name="tipologia_acquisizione" required>
         <option value="">— seleziona —</option>
-        {% for t in ['Fornitura','Bene','Servizio','Lavoro'] %}<option>{{ t }}</option>{% endfor %}
+        {% for t in ['Fornitura','Bene','Servizio','Lavoro'] %}
+        <option {{ 'selected' if r and r['tipologia_acquisizione']==t }}>{{ t }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="fg"><div class="fl">Tipo procedimento *</div>
       <select class="fs" name="tipologia_procedimento" required>
         <option value="">— seleziona —</option>
-        {% for t in ['Acquisto diretto','Indagine di mercato','Richiesta di preventivo'] %}<option>{{ t }}</option>{% endfor %}
+        {% for t in ['Acquisto diretto','Indagine di mercato','Richiesta di preventivo'] %}
+        <option {{ 'selected' if r and r['tipologia_procedimento']==t }}>{{ t }}</option>
+        {% endfor %}
       </select>
     </div>
   </div>
@@ -84,10 +89,11 @@
 <div class="card" style="margin-bottom:1.1rem">
   <div class="st">Oggetto e descrizione</div>
   <div class="fg" style="margin-bottom:.8rem"><div class="fl">Oggetto della richiesta *</div>
-    <input class="fi" type="text" name="oggetto" placeholder="Es. Fornitura materiali manutenzione strade" required maxlength="250">
+    <input class="fi" type="text" name="oggetto" placeholder="Es. Fornitura materiali manutenzione strade" required maxlength="250"
+      value="{{ r['oggetto'] if r else '' }}">
   </div>
   <div class="fg"><div class="fl">Descrizione / motivazione</div>
-    <textarea class="ft" name="descrizione" placeholder="Dettagli aggiuntivi, motivazioni, specifiche tecniche..."></textarea>
+    <textarea class="ft" name="descrizione" placeholder="Dettagli aggiuntivi...">{{ r['descrizione'] if r else '' }}</textarea>
   </div>
 </div>
 
@@ -113,6 +119,27 @@
         <th style="width:6%"></th>
       </tr></thead>
       <tbody id="tbody">
+        {% if arti_exist %}
+        {% for a in arti_exist %}
+        <tr>
+          <td><input type="text" name="desc[]" class="ai" value="{{ a['descrizione'] }}" list="dl-art" autocomplete="off"></td>
+          <td><select name="um[]" class="ai" style="padding:.38rem .35rem">
+            <option value="">—</option>
+            {% for um in um_list %}<option value="{{ um['valore'] }}" {{ 'selected' if um['valore']==a['unita_misura'] }}>{{ um['valore'] }}</option>{% endfor %}
+          </select></td>
+          <td><input type="text" name="qta[]" class="ai" value="{{ a['quantita'] or '' }}" style="text-align:right" oninput="calcQta(this)"></td>
+          <td><select name="pri[]" class="pri-s p{{ a['priorita'] or 5 }}" onchange="updPri(this)">
+            <option value="1" {{ 'selected' if a['priorita']==1 }}>🔴 1 - Acquisto immediato</option>
+            <option value="2" {{ 'selected' if a['priorita']==2 }}>🟠 2 - In giornata</option>
+            <option value="3" {{ 'selected' if a['priorita']==3 }}>🟡 3 - 2/3 giorni</option>
+            <option value="4" {{ 'selected' if a['priorita']==4 }}>🔵 4 - In settimana</option>
+            <option value="5" {{ 'selected' if not a['priorita'] or a['priorita']==5 }}>🟢 5 - Normale procedura</option>
+          </select></td>
+          <td><input type="text" name="note_riga[]" class="ai" value="{{ a['note'] or '' }}" placeholder="Note..."></td>
+          <td><button type="button" onclick="delRow(this)" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .55rem;font-size:.82rem;font-weight:700;cursor:pointer">✕</button></td>
+        </tr>
+        {% endfor %}
+        {% else %}
         <tr>
           <td><input type="text" name="desc[]" class="ai" placeholder="Descrizione..." list="dl-art" autocomplete="off"></td>
           <td><select name="um[]" class="ai" style="padding:.38rem .35rem">
@@ -130,6 +157,7 @@
           <td><input type="text" name="note_riga[]" class="ai" placeholder="Note..."></td>
           <td><button type="button" onclick="delRow(this)" title="Rimuovi riga" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .6rem;cursor:pointer;font-size:.85rem;font-weight:700">✕</button></td>
         </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
@@ -138,9 +166,11 @@
 
 <div class="fa noprint">
   <div class="np">Numero: <span>{{ num_prev }}</span></div>
-  <a href="{{ url_for('lista_richieste') }}" class="btn bo">Annulla</a>
-  <button type="submit" name="azione" value="salva" class="btn bp">💾 Salva bozza</button>
+  <a href="{% if modifica %}{{ url_for('dettaglio_richiesta',rid=r['id']) }}{% else %}{{ url_for('lista_richieste') }}{% endif %}" class="btn bo">Annulla</a>
+  <button type="submit" name="azione" value="salva" class="btn bp">💾 {% if modifica %}Salva modifiche{% else %}Salva bozza{% endif %}</button>
+  {% if not modifica %}
   <button type="submit" name="azione" value="invia" class="btn bv">📨 Invia all'Ufficio Acquisti</button>
+  {% endif %}
 </div>
 </form>
 {% endblock %}
