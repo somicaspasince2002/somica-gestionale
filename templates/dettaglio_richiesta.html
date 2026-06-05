@@ -52,6 +52,7 @@
           <input type="hidden" name="azione" value="invia">
           <button type="submit" class="btn bv" style="width:100%" onclick="return confirm('Inviare all\'Ufficio Acquisti?')">📨 Invia all'Ufficio Acquisti</button>
         </form>
+        <a href="{{ url_for('modifica_richiesta',rid=r['id']) }}" class="btn bo" style="width:100%;justify-content:center">✏️ Modifica bozza</a>
         {% endif %}
         {% if r['stato']=='inviata' and session.get('liv') in ['admin','master','ufficio_acquisti'] %}
         <form method="POST" action="{{ url_for('azione_richiesta',rid=r['id']) }}">
