@@ -121,6 +121,7 @@ tbody tr:hover td{background:var(--blul)}
   <div class="sb-sep">Ufficio Acquisti</div>
   <a href="{{ url_for('lista_rif') }}" class="sb-a {{ 'on' if request.endpoint in ['lista_rif','nuova_rif','dettaglio_rif'] }}"><span class="ic">📤</span> Richieste Fornitori</a>
   <a href="{{ url_for('lista_richieste') }}" class="sb-a"><span class="ic">📥</span> Richieste Ricevute</a>
+  <a href="{{ url_for('lista_ordini') }}" class="sb-a {{ 'on' if request.endpoint in ['lista_ordini','nuovo_ordine','dettaglio_ordine'] }}"><span class="ic">📋</span> Ordini di Acquisizione</a>
   {% endif %}
 
   <div class="sb-sep">Anagrafiche</div>
