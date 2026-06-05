@@ -43,6 +43,7 @@
       <div class="ch"><h3>Azioni</h3></div>
       <div style="display:flex;flex-direction:column;gap:.55rem">
         <a href="{{ url_for('stampa_rif',rfid=rf['id']) }}" class="btn bv" style="width:100%;justify-content:center" target="_blank">🖨 Stampa / Salva PDF</a>
+        <a href="{{ url_for('modifica_rif',rfid=rf['id']) }}" class="btn bo" style="width:100%;justify-content:center">✏️ Modifica</a>
         <button type="button" class="btn bp" style="width:100%;justify-content:center" onclick="apriMulti()">📤 Invia a più fornitori</button>
       </div>
     </div>
