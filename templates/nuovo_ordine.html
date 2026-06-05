@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Nuovo Ordine — SO.MI.CA.{% endblock %}
-{% block ptitle %}Nuovo Ordine di Acquisizione{% endblock %}
+{% block title %}{% if modifica %}Modifica Ordine{% else %}Nuovo Ordine{% endif %} — SO.MI.CA.{% endblock %}
+{% block ptitle %}{% if modifica %}Modifica Ordine {{ o['numero'] }}{% else %}Nuovo Ordine di Acquisizione{% endif %}{% endblock %}
 {% block extra_css %}
 <style>
 .at{width:100%;border-collapse:collapse;font-size:.81rem}
@@ -26,7 +26,7 @@
   <a href="{{ url_for('lista_ordini') }}" class="btn bo">← Lista</a>
 </div>
 
-<form method="POST" id="frm">
+<form method="POST" id="frm" action="{% if modifica %}{{ url_for('modifica_ordine',oid=o['id']) }}{% else %}{{ url_for('nuovo_ordine') }}{% endif %}">
 {% if rf_src %}<input type="hidden" name="rif_id" value="{{ rf_src['id'] }}">
 {% if rf_src['richiesta_acq_id'] %}<input type="hidden" name="richiesta_acq_id" value="{{ rf_src['richiesta_acq_id'] }}">{% endif %}
 {% endif %}
@@ -204,9 +204,11 @@
 <!-- AZIONI -->
 <div class="fa noprint">
   <div class="np">Numero: <span>{{ numero_prev }}</span></div>
-  <a href="{{ url_for('lista_ordini') }}" class="btn bo">Annulla</a>
-  <button type="submit" name="azione" value="salva" class="btn bp">💾 Salva bozza</button>
+  <a href="{% if modifica %}{{ url_for('dettaglio_ordine',oid=o['id']) }}{% else %}{{ url_for('lista_ordini') }}{% endif %}" class="btn bo">Annulla</a>
+  <button type="submit" name="azione" value="salva" class="btn bp">💾 {% if modifica %}Salva modifiche{% else %}Salva bozza{% endif %}</button>
+  {% if not modifica %}
   <button type="submit" name="azione" value="conferma" class="btn bv">✅ Conferma ordine</button>
+  {% endif %}
 </div>
 </form>
 {% endblock %}
