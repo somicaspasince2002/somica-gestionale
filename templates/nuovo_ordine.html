@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}Nuovo Ordine — SO.MI.CA.{% endblock %}
+{% block ptitle %}Nuovo Ordine di Acquisizione{% endblock %}
+{% block extra_css %}
+<style>
+.at{width:100%;border-collapse:collapse;font-size:.81rem}
+.at th{background:var(--bg);color:var(--mut);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:.48rem .55rem;text-align:left;border-bottom:1px solid var(--brd)}
+.at td{padding:.35rem .3rem;border-bottom:1px solid var(--brd);vertical-align:middle}
+.ai{padding:.4rem .55rem;border:1.5px solid var(--brd);border-radius:6px;font-size:.81rem;font-family:inherit;color:var(--txt);width:100%;outline:none;text-align:left}
+.ai:focus{border-color:var(--blu);box-shadow:0 0 0 2px rgba(26,58,107,.08)}
+.ai-num{text-align:right}
+.tot-row td{font-weight:700;border-top:2px solid var(--blu);background:var(--blul)}
+.fa{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--brd);padding:.9rem 1.7rem;margin:0 -1.7rem -1.5rem;display:flex;align-items:center;justify-content:flex-end;gap:.7rem;z-index:40}
+.np{font-size:.78rem;color:var(--mut);margin-right:auto}
+.np span{font-weight:700;color:var(--blu)}
+</style>
+{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Nuovo Ordine di Acquisizione</h1>
+    <div class="meta">
+      {% if rf_src %}Generato dalla richiesta {{ rf_src['numero'] }} — {{ rf_src['fn'] or 'Fornitore non specificato' }}
+      {% else %}Nuovo ordine{% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('lista_ordini') }}" class="btn bo">← Lista</a>
+</div>
+
+<form method="POST" id="frm">
+{% if rf_src %}<input type="hidden" name="rif_id" value="{{ rf_src['id'] }}">
+{% if rf_src['richiesta_acq_id'] %}<input type="hidden" name="richiesta_acq_id" value="{{ rf_src['richiesta_acq_id'] }}">{% endif %}
+{% endif %}
+
+<!-- DATI GENERALI -->
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Dati generali</div>
+  <div class="g3" style="margin-bottom:.9rem">
+    <div class="fg"><div class="fl">Numero (auto)</div>
+      <input class="fi" value="{{ numero_prev }}" disabled style="background:var(--bg);color:var(--mut)">
+    </div>
+    <div class="fg"><div class="fl">Data *</div>
+      <input class="fi" type="date" name="data" value="{{ oggi }}" required>
+    </div>
+    <div class="fg"><div class="fl">Commessa / C.d.C.</div>
+      <select class="fs" name="commessa_id">
+        <option value="">— nessuna —</option>
+        {% for c in commesse %}
+        <option value="{{ c['id'] }}">{{ c['codice'] }} — {{ c['descrizione'] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="fg" style="margin-bottom:.9rem">
+    <div class="fl">Oggetto dell'ordine *</div>
+    <input class="fi" type="text" name="oggetto" required
+      value="{{ rf_src['oggetto'] if rf_src else '' }}"
+      placeholder="Es. Fornitura materiali manutenzione strade">
+  </div>
+  <div class="g2">
+    <div class="fg"><div class="fl">Rif. preventivo fornitore</div>
+      <input class="fi" type="text" name="rif_preventivo" placeholder="Es. Vs. offerta n. 123 del ...">
+    </div>
+    <div class="fg"><div class="fl">CIG <span style="font-size:.68rem;color:var(--mut);font-weight:400">(da esporre in fattura)</span></div>
+      <input class="fi" type="text" name="cig" placeholder="Codice Identificativo Gara">
+    </div>
+  </div>
+</div>
+
+<!-- FORNITORE -->
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Fornitore</div>
+  <div class="fg" style="margin-bottom:.8rem">
+    <div class="fl">Seleziona fornitore</div>
+    <select class="fs" name="fornitore_id" id="sel-forn" onchange="caricaFornitore(this.value)">
+      <option value="">— seleziona —</option>
+      {% for f in fornitori %}
+      <option value="{{ f['id'] }}" {{ 'selected' if rf_src and rf_src['fornitore_id']==f['id'] }}>{{ f['ragione_sociale'] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div id="info-forn" style="background:var(--blul);border-radius:8px;padding:.8rem 1rem;font-size:.82rem;color:var(--txt);
+    {% if not rf_src or not rf_src['fn'] %}display:none{% endif %}">
+    {% if rf_src and rf_src['fn'] %}
+    <strong>{{ rf_src['fn'] }}</strong><br>
+    {% if rf_src['fi'] %}{{ rf_src['fi'] }}, {{ rf_src['fco'] }} ({{ rf_src['fp'] }})<br>{% endif %}
+    {% if rf_src['fpi'] %}P.IVA: {{ rf_src['fpi'] }}{% endif %}
+    {% if rf_src['fpec'] %} | PEC: {{ rf_src['fpec'] }}{% endif %}
+    {% if rf_src['fe'] %} | Email: {{ rf_src['fe'] }}{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- DURC -->
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">DURC</div>
+  <div class="g3">
+    <div class="fg"><div class="fl">Ente rilascio</div>
+      <input class="fi" type="text" name="durc_ente" placeholder="Es. INPS">
+    </div>
+    <div class="fg"><div class="fl">Data rilascio</div>
+      <input class="fi" type="date" name="durc_data">
+    </div>
+    <div class="fg"><div class="fl">Data scadenza</div>
+      <input class="fi" type="date" name="durc_scadenza">
+    </div>
+  </div>
+</div>
+
+<!-- ARTICOLI -->
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st" style="display:flex;align-items:center;justify-content:space-between">
+    <span>Articoli / Voci dell'ordine</span>
+    <button type="button" class="btn bo bs" onclick="addRow()">＋ Aggiungi riga</button>
+  </div>
+  <div style="overflow-x:auto;margin-top:.5rem">
+    <table class="at" id="tab">
+      <thead><tr>
+        <th style="width:35%">Descrizione *</th>
+        <th style="width:9%">U.M.</th>
+        <th style="width:10%">Quantità</th>
+        <th style="width:13%">Prezzo Unit. €</th>
+        <th style="width:13%">Importo €</th>
+        <th style="width:14%">Note</th>
+        <th style="width:6%"></th>
+      </tr></thead>
+      <tbody id="tbody">
+        {% if arti_src %}{% for a in arti_src %}
+        <tr>
+          <td><input type="text" name="desc[]" class="ai" value="{{ a['descrizione'] }}"></td>
+          <td><select name="um[]" class="ai" style="padding:.38rem .3rem">
+            <option value="">—</option>
+            {% for um in um_list %}<option value="{{ um['valore'] }}" {{ 'selected' if um['valore']==a['unita_misura'] }}>{{ um['valore'] }}</option>{% endfor %}
+          </select></td>
+          <td><input type="text" name="qta[]" class="ai ai-num" value="{{ a['quantita'] or '' }}" oninput="ricalcola(this)"></td>
+          <td><input type="text" name="prezzo[]" class="ai ai-num" placeholder="0.00" oninput="ricalcola(this)"></td>
+          <td><input type="text" class="ai ai-num" readonly style="background:var(--bg);font-weight:600" value=""></td>
+          <td><input type="text" name="note_riga[]" class="ai" placeholder="Note..."></td>
+          <td><button type="button" onclick="delRow(this)" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .55rem;font-size:.82rem;font-weight:700;cursor:pointer">✕</button></td>
+        </tr>
+        {% endfor %}{% else %}
+        <tr>
+          <td><input type="text" name="desc[]" class="ai" placeholder="Descrizione articolo..."></td>
+          <td><select name="um[]" class="ai" style="padding:.38rem .3rem">
+            <option value="">—</option>
+            {% for um in um_list %}<option value="{{ um['valore'] }}">{{ um['valore'] }}</option>{% endfor %}
+          </select></td>
+          <td><input type="text" name="qta[]" class="ai ai-num" placeholder="0" oninput="ricalcola(this)"></td>
+          <td><input type="text" name="prezzo[]" class="ai ai-num" placeholder="0.00" oninput="ricalcola(this)"></td>
+          <td><input type="text" class="ai ai-num" readonly style="background:var(--bg);font-weight:600" value=""></td>
+          <td><input type="text" name="note_riga[]" class="ai" placeholder="Note..."></td>
+          <td><button type="button" onclick="delRow(this)" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .55rem;font-size:.82rem;font-weight:700;cursor:pointer">✕</button></td>
+        </tr>
+        {% endif %}
+      </tbody>
+      <!-- TOTALE PARZIALE -->
+      <tfoot>
+        <tr class="tot-row">
+          <td colspan="4" style="text-align:right;font-size:.82rem">Totale parziale (IVA esclusa):</td>
+          <td><input type="text" id="tot-parz" class="ai ai-num" readonly style="background:var(--blul);font-weight:700;color:var(--blu)" value="€ 0,00"></td>
+          <td colspan="2"></td>
+        </tr>
+        <tr id="row-trasp" style="display:none">
+          <td colspan="2"><label style="display:flex;align-items:center;gap:6px;font-size:.81rem;cursor:pointer">
+            <input type="checkbox" checked onchange="toggleTrasporto(this)"> Spese di trasporto
+          </label></td>
+          <td colspan="2" style="text-align:right;font-size:.82rem">Spese trasporto:</td>
+          <td><input type="text" name="trasporto_importo" id="trasp-val" class="ai ai-num" placeholder="0.00" oninput="aggTotale()" value="0"></td>
+          <td><input type="text" name="trasporto_note" class="ai" placeholder="Note trasporto..."></td>
+          <td></td>
+        </tr>
+        <tr class="tot-row">
+          <td colspan="4" style="text-align:right;font-size:.9rem">TOTALE ORDINE (IVA esclusa):</td>
+          <td><input type="text" id="tot-finale" class="ai ai-num" readonly style="background:var(--blul);font-weight:700;color:var(--blu);font-size:.95rem" value="€ 0,00"></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <!-- Attiva trasporto -->
+  <div style="margin-top:.8rem;display:flex;align-items:center;gap:8px">
+    <input type="checkbox" id="chk-trasp" onchange="mostraTrasporto(this)" style="cursor:pointer">
+    <input type="hidden" name="trasporto_incluso" id="hid-trasp" value="0">
+    <label for="chk-trasp" style="font-size:.83rem;cursor:pointer;color:var(--mut)">Includi spese di trasporto</label>
+  </div>
+</div>
+
+<!-- FATTURAZIONE E CONSEGNA -->
+<div class="card" style="margin-bottom:1.1rem">
+  <div class="st">Fatturazione e consegna</div>
+  <div class="fg" style="margin-bottom:.8rem">
+    <div class="fl">Modalità di fatturazione</div>
+    <textarea class="ft" name="modalita_fatturazione" rows="3">{{ modalita_default }}</textarea>
+  </div>
+  <div class="fg" style="margin-bottom:.8rem">
+    <div class="fl">Tempi di consegna</div>
+    <input class="fi" type="text" name="tempi_consegna" placeholder="Es. Entro 30 giorni dalla data dell'ordine">
+  </div>
+  <div class="fg">
+    <div class="fl">Note aggiuntive</div>
+    <textarea class="ft" name="note" placeholder="Eventuali note o condizioni particolari..."></textarea>
+  </div>
+</div>
+
+<!-- AZIONI -->
+<div class="fa noprint">
+  <div class="np">Numero: <span>{{ numero_prev }}</span></div>
+  <a href="{{ url_for('lista_ordini') }}" class="btn bo">Annulla</a>
+  <button type="submit" name="azione" value="salva" class="btn bp">💾 Salva bozza</button>
+  <button type="submit" name="azione" value="conferma" class="btn bv">✅ Conferma ordine</button>
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fmt(n){ return '€ '+n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
+
+function ricalcola(inp){
+  var tr=inp.closest('tr');
+  var qta=parseFloat(tr.querySelector('input[name="qta[]"]').value)||0;
+  var pr=parseFloat(tr.querySelector('input[name="prezzo[]"]').value)||0;
+  var imp=tr.querySelectorAll('input[type="text"]')[4];
+  imp.value=(qta*pr>0)?fmt(qta*pr):'';
+  aggTotale();
+}
+
+function aggTotale(){
+  var tot=0;
+  document.querySelectorAll('#tbody tr').forEach(function(tr){
+    var qta=parseFloat(tr.querySelector('input[name="qta[]"]').value)||0;
+    var pr=parseFloat(tr.querySelector('input[name="prezzo[]"]').value)||0;
+    tot+=qta*pr;
+  });
+  document.getElementById('tot-parz').value=fmt(tot);
+  var trasp=0;
+  if(document.getElementById('chk-trasp').checked){
+    trasp=parseFloat(document.getElementById('trasp-val').value)||0;
+  }
+  document.getElementById('tot-finale').value=fmt(tot+trasp);
+}
+
+function mostraTrasporto(chk){
+  document.getElementById('row-trasp').style.display=chk.checked?'':'none';
+  document.getElementById('hid-trasp').value=chk.checked?'1':'0';
+  aggTotale();
+}
+
+function toggleTrasporto(chk){
+  if(!chk.checked) document.getElementById('trasp-val').value='0';
+  aggTotale();
+}
+
+function addRow(){
+  var tb=document.getElementById('tbody'), tr=tb.querySelector('tr').cloneNode(true);
+  tr.querySelectorAll('input[type="text"]').forEach(function(i){i.value='';});
+  var s=tr.querySelector('select[name="um[]"]'); if(s)s.selectedIndex=0;
+  tb.appendChild(tr);
+}
+
+function delRow(btn){
+  var tb=document.getElementById('tbody');
+  if(tb.querySelectorAll('tr').length>1){ btn.closest('tr').remove(); aggTotale(); }
+}
+
+function caricaFornitore(id){
+  if(!id){document.getElementById('info-forn').style.display='none';return;}
+  fetch('/api/fornitore/'+id)
+    .then(function(r){return r.json();})
+    .then(function(f){
+      var d=document.getElementById('info-forn');
+      d.style.display='block';
+      d.innerHTML='<strong>'+f.ragione_sociale+'</strong> ('+f.tipologia+')'+
+        (f.indirizzo?'<br>'+f.indirizzo+', '+f.comune+' ('+f.provincia+')':'')+
+        (f.partita_iva?'<br>P.IVA: '+f.partita_iva:'')+
+        (f.pec?' | PEC: '+f.pec:'')+
+        (f.email?' | Email: '+f.email:'')+
+        (f.telefono?' | Tel: '+f.telefono:'');
+    });
+}
+// Inizializza fornitore se importato
+window.onload=function(){
+  var s=document.getElementById('sel-forn');
+  if(s && s.value) caricaFornitore(s.value);
+  aggTotale();
+};
+</script>
+{% endblock %}
