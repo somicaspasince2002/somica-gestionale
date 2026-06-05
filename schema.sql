@@ -68,3 +68,40 @@ CREATE TABLE IF NOT EXISTS log_attivita (
     entita_id INTEGER, dettaglio TEXT, ip TEXT,
     quando TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS ordini (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero TEXT UNIQUE NOT NULL,
+    data TEXT NOT NULL,
+    rif_id INTEGER,
+    richiesta_acq_id INTEGER,
+    fornitore_id INTEGER,
+    commessa_id INTEGER,
+    oggetto TEXT NOT NULL,
+    cig TEXT,
+    rif_preventivo TEXT,
+    durc_ente TEXT,
+    durc_data TEXT,
+    durc_scadenza TEXT,
+    split_payment INTEGER DEFAULT 1,
+    tempi_consegna TEXT,
+    modalita_fatturazione TEXT DEFAULT 'Split Payment art. 17-ter co.1-bis D.P.R. 633/1972 - Cod. destinatario KRRH6B9 - PEC: somica@pec.it',
+    trasporto_incluso INTEGER DEFAULT 0,
+    trasporto_importo REAL DEFAULT 0,
+    trasporto_note TEXT,
+    note TEXT,
+    stato TEXT DEFAULT 'bozza',
+    creato_da INTEGER,
+    creato_il TEXT DEFAULT CURRENT_TIMESTAMP,
+    confermato_il TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ordini_articoli (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ordine_id INTEGER NOT NULL,
+    descrizione TEXT NOT NULL,
+    unita_misura TEXT,
+    quantita REAL,
+    prezzo_unitario REAL,
+    note TEXT
+);
