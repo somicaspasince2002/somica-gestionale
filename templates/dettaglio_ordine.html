@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}{{ o['numero'] }} — SO.MI.CA.{% endblock %}
+{% block ptitle %}{{ o['numero'] }}{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>{{ o['numero'] }}</h1>
+    <div class="meta">{{ o['fn'] or '—' }} · {{ o['data'][:10] if o['data'] else '' }}</div>
+  </div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+    {% set s=o['stato'] %}
+    <span class="bdg {{ 'bb' if s=='bozza' else 'bl' if s=='confermato' else 'ba' }}" style="font-size:.8rem;padding:.3rem .9rem">
+      {{ 'Bozza' if s=='bozza' else 'Confermato' if s=='confermato' else 'Archiviato' }}
+    </span>
+    <a href="{{ url_for('stampa_ordine',oid=o['id']) }}" class="btn bv bs" target="_blank">🖨 Stampa / PDF</a>
+    <a href="{{ url_for('lista_ordini') }}" class="btn bo bs">← Lista</a>
+  </div>
+</div>
+
+<div class="gc">
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Dati ordine</h3></div>
+      <table style="font-size:.83rem">
+        <tr><td style="color:var(--mut);padding:.35rem 0;width:130px">Numero</td><td><strong style="color:var(--blu)">{{ o['numero'] }}</strong></td></tr>
+        <tr><td style="color:var(--mut);padding:.35rem 0">Data</td><td>{{ o['data'][:10] if o['data'] else '—' }}</td></tr>
+        <tr><td style="color:var(--mut);padding:.35rem 0">Fornitore</td><td><strong>{{ o['fn'] or '—' }}</strong></td></tr>
+        {% if o['fi'] %}<tr><td style="color:var(--mut);padding:.35rem 0">Indirizzo</td><td>{{ o['fi'] }}, {{ o['fco'] }} ({{ o['fp'] }})</td></tr>{% endif %}
+        {% if o['fpi'] %}<tr><td style="color:var(--mut);padding:.35rem 0">P.IVA</td><td>{{ o['fpi'] }}</td></tr>{% endif %}
+        {% if o['fpec'] %}<tr><td style="color:var(--mut);padding:.35rem 0">PEC</td><td>{{ o['fpec'] }}</td></tr>{% endif %}
+        {% if o['fe'] %}<tr><td style="color:var(--mut);padding:.35rem 0">Email</td><td>{{ o['fe'] }}</td></tr>{% endif %}
+        <tr><td style="color:var(--mut);padding:.35rem 0">Commessa</td><td>{{ (o['cc']+' — '+o['cd']) if o['cc'] else '—' }}</td></tr>
+        {% if o['cig'] %}<tr><td style="color:var(--mut);padding:.35rem 0">CIG</td><td><strong>{{ o['cig'] }}</strong> <span style="font-size:.72rem;color:var(--mut)">(da esporre in fattura)</span></td></tr>{% endif %}
+        {% if o['rif_preventivo'] %}<tr><td style="color:var(--mut);padding:.35rem 0">Rif. preventivo</td><td>{{ o['rif_preventivo'] }}</td></tr>{% endif %}
+      </table>
+    </div>
+
+    {% if o['durc_ente'] %}
+    <div class="card">
+      <div class="ch"><h3>DURC</h3></div>
+      <table style="font-size:.83rem">
+        <tr><td style="color:var(--mut);padding:.35rem 0;width:130px">Ente</td><td>{{ o['durc_ente'] }}</td></tr>
+        {% if o['durc_data'] %}<tr><td style="color:var(--mut);padding:.35rem 0">Data rilascio</td><td>{{ o['durc_data'] }}</td></tr>{% endif %}
+        {% if o['durc_scadenza'] %}<tr><td style="color:var(--mut);padding:.35rem 0">Scadenza</td><td>{{ o['durc_scadenza'] }}</td></tr>{% endif %}
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:1.1rem">
+    <div class="card">
+      <div class="ch"><h3>Importi</h3></div>
+      <table style="font-size:.83rem">
+        <tr><td style="color:var(--mut);padding:.35rem 0">Totale parziale</td><td style="text-align:right;font-weight:600">€ {{ "%.2f"|format(totale) }}</td></tr>
+        {% if o['trasporto_incluso'] %}
+        <tr><td style="color:var(--mut);padding:.35rem 0">Spese trasporto{% if o['trasporto_note'] %} ({{ o['trasporto_note'] }}){% endif %}</td><td style="text-align:right;font-weight:600">€ {{ "%.2f"|format(trasporto) }}</td></tr>
+        {% endif %}
+        <tr style="border-top:2px solid var(--blu)"><td style="padding:.5rem 0;font-weight:700;color:var(--blu)">TOTALE (IVA esclusa)</td><td style="text-align:right;font-weight:700;font-size:1.1rem;color:var(--blu)">€ {{ "%.2f"|format(totale_finale) }}</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="ch"><h3>Azioni</h3></div>
+      <div style="display:flex;flex-direction:column;gap:.55rem">
+        <a href="{{ url_for('stampa_ordine',oid=o['id']) }}" class="btn bv" style="width:100%;justify-content:center" target="_blank">🖨 Stampa / Salva PDF</a>
+        {% if o['stato']=='bozza' %}
+        <form method="POST" action="{{ url_for('azione_ordine',oid=o['id']) }}">
+          <input type="hidden" name="azione" value="conferma">
+          <button type="submit" class="btn bp" style="width:100%" onclick="return confirm('Confermare l\'ordine?')">✅ Conferma ordine</button>
+        </form>
+        {% endif %}
+        {% if o['stato'] not in ['archiviato'] %}
+        <form method="POST" action="{{ url_for('azione_ordine',oid=o['id']) }}">
+          <input type="hidden" name="azione" value="archivia">
+          <button type="submit" class="btn" style="width:100%;background:var(--bg);color:var(--mut);border:1px solid var(--brd)" onclick="return confirm('Archiviare?')">🗃 Archivia</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if o['modalita_fatturazione'] %}
+    <div class="card">
+      <div class="ch"><h3>Fatturazione</h3></div>
+      <p style="font-size:.8rem;color:var(--mut);line-height:1.6">{{ o['modalita_fatturazione'] }}</p>
+      {% if o['tempi_consegna'] %}
+      <p style="font-size:.8rem;color:var(--mut);margin-top:.5rem"><strong>Tempi consegna:</strong> {{ o['tempi_consegna'] }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top:1.1rem">
+  <div class="ch"><h3>Articoli / Voci ordine ({{ arti|length }})</h3></div>
+  {% if arti %}
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>#</th><th>Descrizione</th><th>U.M.</th><th style="text-align:right">Quantità</th><th style="text-align:right">Prezzo unit. €</th><th style="text-align:right">Importo €</th><th>Note</th></tr></thead>
+    <tbody>{% for a in arti %}
+    <tr>
+      <td style="color:var(--mut);font-size:.77rem">{{ loop.index }}</td>
+      <td><strong>{{ a['descrizione'] }}</strong></td>
+      <td style="color:var(--mut)">{{ a['unita_misura'] or '—' }}</td>
+      <td style="text-align:right">{{ a['quantita'] if a['quantita'] else '—' }}</td>
+      <td style="text-align:right">{% if a['prezzo_unitario'] %}€ {{ "%.2f"|format(a['prezzo_unitario']) }}{% else %}—{% endif %}</td>
+      <td style="text-align:right;font-weight:600;color:var(--blu)">
+        {% if a['quantita'] and a['prezzo_unitario'] %}€ {{ "%.2f"|format(a['quantita']*a['prezzo_unitario']) }}{% else %}—{% endif %}
+      </td>
+      <td style="color:var(--mut);font-size:.79rem">{{ a['note'] or '—' }}</td>
+    </tr>
+    {% endfor %}</tbody>
+    <tfoot>
+      {% if o['trasporto_incluso'] %}
+      <tr style="background:var(--bg)">
+        <td colspan="5" style="text-align:right;font-size:.82rem;padding:.5rem .85rem;color:var(--mut)">Spese di trasporto:</td>
+        <td style="text-align:right;font-weight:600;padding:.5rem .85rem">€ {{ "%.2f"|format(trasporto) }}</td>
+        <td style="color:var(--mut);font-size:.79rem;padding:.5rem .85rem">{{ o['trasporto_note'] or '' }}</td>
+      </tr>
+      {% endif %}
+      <tr style="background:var(--blul);border-top:2px solid var(--blu)">
+        <td colspan="5" style="text-align:right;font-weight:700;padding:.6rem .85rem;color:var(--blu)">TOTALE ORDINE (IVA esclusa):</td>
+        <td style="text-align:right;font-weight:700;font-size:1rem;padding:.6rem .85rem;color:var(--blu)">€ {{ "%.2f"|format(totale_finale) }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table></div>
+  {% else %}
+  <div class="emp"><div class="ei">📋</div><p>Nessun articolo</p></div>
+  {% endif %}
+  {% if o['note'] %}
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--brd)">
+    <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:var(--mut);margin-bottom:.4rem">Note</div>
+    <p style="font-size:.83rem;color:var(--mut);line-height:1.6">{{ o['note'] }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
