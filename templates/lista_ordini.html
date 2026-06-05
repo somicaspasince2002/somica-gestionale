@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Ordini — SO.MI.CA.{% endblock %}
+{% block ptitle %}Ordini di Acquisizione{% endblock %}
+{% block content %}
+<div class="ph">
+  <div><h1>Ordini di Acquisizione</h1><div class="meta">{{ rows|length }} ordini</div></div>
+  <a href="{{ url_for('nuovo_ordine') }}" class="btn bp">＋ Nuovo Ordine</a>
+</div>
+<div class="card" style="margin-bottom:1.1rem">
+  <form method="GET" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap">
+    <div style="flex:2;min-width:170px"><div class="fl" style="margin-bottom:.28rem">Cerca</div>
+      <input class="fi" name="cerca" value="{{ fc }}" placeholder="Numero o oggetto..." style="padding:.55rem .85rem"></div>
+    <div style="flex:1;min-width:130px"><div class="fl" style="margin-bottom:.28rem">Stato</div>
+      <select class="fs" name="stato" style="padding:.55rem .85rem">
+        <option value="">Tutti</option>
+        <option value="bozza" {{ "selected" if fs=="bozza" }}>Bozza</option>
+        <option value="confermato" {{ "selected" if fs=="confermato" }}>Confermato</option>
+        <option value="archiviato" {{ "selected" if fs=="archiviato" }}>Archiviato</option>
+      </select></div>
+    <button type="submit" class="btn bp" style="height:37px">🔍 Filtra</button>
+    <a href="{{ url_for('lista_ordini') }}" class="btn bo" style="height:37px">✕</a>
+  </form>
+</div>
+<div class="card">
+  {% if rows %}
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>Numero</th><th>Fornitore</th><th>Oggetto</th><th>Data</th><th>CIG</th><th>Stato</th><th></th></tr></thead>
+    <tbody>{% for o in rows %}
+    <tr style="cursor:pointer" onclick="location.href='{{ url_for("dettaglio_ordine",oid=o["id"]) }}'">
+      <td><strong style="color:var(--blu);font-size:.8rem">{{ o["numero"] }}</strong></td>
+      <td style="font-size:.79rem">{{ o["fn"] or "—" }}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ o["oggetto"] }}</td>
+      <td style="color:var(--mut);font-size:.79rem;white-space:nowrap">{{ o["data"][:10] if o["data"] else "—" }}</td>
+      <td style="font-size:.79rem;color:var(--mut)">{{ o["cig"] or "—" }}</td>
+      <td>
+        {% set s=o["stato"] %}
+        <span class="bdg {{ "bb" if s=="bozza" else "bl" if s=="confermato" else "ba" }}">
+          {{ "Bozza" if s=="bozza" else "Confermato" if s=="confermato" else "Archiviato" }}
+        </span>
+      </td>
+      <td style="color:var(--blu)">→</td>
+    </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}
+  <div class="emp"><div class="ei">📋</div><p>Nessun ordine ancora.<br><a href="{{ url_for("nuovo_ordine") }}" style="color:var(--blu)">Crea il primo ordine</a>.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
