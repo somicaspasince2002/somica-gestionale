@@ -320,6 +320,47 @@ def api_um():
     return jsonify([r['valore'] for r in rows])
 
 # ─── RICHIESTE DI ACQUISIZIONE ─────────────────────────────────────────────────
+@app.route('/richieste/<int:rid>/modifica', methods=['GET','POST'])
+@login_req
+def modifica_richiesta(rid):
+    db = get_db(); u = utente()
+    r = db.execute("SELECT * FROM richieste WHERE id=?",(rid,)).fetchone()
+    if not r: return redirect(url_for('lista_richieste'))
+    commesse = db.execute("SELECT * FROM commesse WHERE stato='attiva' ORDER BY codice").fetchall()
+    articoli = db.execute("SELECT * FROM articoli ORDER BY categoria,descrizione").fetchall()
+    utenti_l = db.execute("SELECT * FROM utenti WHERE attivo=1 ORDER BY cognome").fetchall()
+    um_list  = db.execute("SELECT valore FROM unita_misura ORDER BY valore").fetchall()
+    arti_exist = db.execute("SELECT * FROM richiesta_articoli WHERE richiesta_id=? ORDER BY id",(rid,)).fetchall()
+    if request.method == 'POST':
+        db.execute("UPDATE richieste SET data=?,ufficio_richiedente=?,referente_id=?,commessa_id=?,"
+            "tipologia_acquisizione=?,tipologia_procedimento=?,oggetto=?,descrizione=? WHERE id=?",
+            (request.form.get('data'), request.form.get('ufficio_richiedente',u['ufficio']),
+             request.form.get('referente_id') or None, request.form.get('commessa_id') or None,
+             request.form.get('tipologia_acquisizione'), request.form.get('tipologia_procedimento'),
+             request.form.get('oggetto','').strip(), request.form.get('descrizione','').strip(), rid))
+        db.execute("DELETE FROM richiesta_articoli WHERE richiesta_id=?",(rid,))
+        descs=request.form.getlist('desc[]'); ums=request.form.getlist('um[]')
+        qtas=request.form.getlist('qta[]'); pris=request.form.getlist('pri[]')
+        notes=request.form.getlist('note_riga[]')
+        for i,desc in enumerate(descs):
+            if not desc.strip(): continue
+            try: qta=float(qtas[i]) if i<len(qtas) and qtas[i] else None
+            except: qta=None
+            try: pri=int(pris[i]) if i<len(pris) and pris[i] else 5
+            except: pri=5
+            db.execute("INSERT INTO richiesta_articoli (richiesta_id,descrizione,unita_misura,quantita,priorita,note) VALUES (?,?,?,?,?,?)",
+                (rid,desc.strip(),ums[i] if i<len(ums) else '',qta,pri,notes[i] if i<len(notes) else ''))
+        db.commit()
+        log('modifica_richiesta','Richiesta '+r['numero']+' modificata','richiesta',rid)
+        return redirect(url_for('dettaglio_richiesta',rid=rid))
+    aj = __import__('json').dumps({a['descrizione']:{'um':a['unita_misura'] or '','cat':a['categoria']} for a in articoli}, ensure_ascii=False)
+    return render_template('nuova_richiesta.html', u=u, commesse=commesse,
+        articoli=articoli, utenti_l=utenti_l, um_list=um_list,
+        num_prev=r['numero'], aj=aj, oggi=r['data'] or date.today().isoformat(),
+        r=r, arti_exist=arti_exist, modifica=True,
+        categorie=['Settore Edile','Verde e Sfalcio','Segnaletica','Impiantistica','Cimiteriale','Pulizie Edifici','Varie'])
+
+
 @app.route('/richieste')
 @login_req
 def lista_richieste():
@@ -454,6 +495,40 @@ def lista_rif():
     return render_template('lista_rif.html', u=u, rows=rows, fc=cerca, fs=stato,
         in_attesa=richieste_da_prendere)
 
+@app.route('/fornitori/richieste/<int:rfid>/modifica', methods=['GET','POST'])
+@login_req
+def modifica_rif(rfid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    rf=db.execute("SELECT * FROM richieste_fornitori WHERE id=?",(rfid,)).fetchone()
+    if not rf: return redirect(url_for('lista_rif'))
+    fornitori=db.execute("SELECT * FROM fornitori WHERE attivo=1 ORDER BY ragione_sociale").fetchall()
+    um_list=db.execute("SELECT valore FROM unita_misura ORDER BY valore").fetchall()
+    arti_exist=db.execute("SELECT * FROM rif_articoli WHERE rif_id=? ORDER BY id",(rfid,)).fetchall()
+    richieste_acq=db.execute("SELECT * FROM richieste WHERE stato IN ('inviata','in_lavorazione') ORDER BY numero DESC").fetchall()
+    if request.method=='POST':
+        db.execute("UPDATE richieste_fornitori SET data=?,fornitore_id=?,tipologia=?,oggetto=?,testo_intro=?,note=? WHERE id=?",
+            (request.form.get('data'), request.form.get('fornitore_id') or None,
+             request.form.get('tipologia'), request.form.get('oggetto','').strip(),
+             request.form.get('testo_intro',''), request.form.get('note',''), rfid))
+        db.execute("DELETE FROM rif_articoli WHERE rif_id=?",(rfid,))
+        descs=request.form.getlist('desc[]'); ums=request.form.getlist('um[]')
+        qtas=request.form.getlist('qta[]'); notes=request.form.getlist('note_riga[]')
+        for i,desc in enumerate(descs):
+            if not desc.strip(): continue
+            try: qta=float(qtas[i]) if i<len(qtas) and qtas[i] else None
+            except: qta=None
+            db.execute("INSERT INTO rif_articoli (rif_id,descrizione,unita_misura,quantita,note) VALUES (?,?,?,?,?)",
+                (rfid,desc.strip(),ums[i] if i<len(ums) else '',qta,notes[i] if i<len(notes) else ''))
+        db.commit()
+        log('modifica_rif','Richiesta fornitore '+rf['numero']+' modificata','rif',rfid)
+        return redirect(url_for('dettaglio_rif',rfid=rfid))
+    return render_template('nuova_rif.html', u=u, fornitori=fornitori,
+        richieste_acq=richieste_acq, r_src=None, arti_src=arti_exist,
+        um_list=um_list, oggi=rf['data'] or date.today().isoformat(),
+        rf=rf, modifica=True)
+
 @app.route('/fornitori/richieste/nuova', methods=['GET','POST'])
 @login_req
 def nuova_rif():
@@ -582,6 +657,53 @@ def lista_ordini():
     q+=" ORDER BY o.creato_il DESC"
     rows=db.execute(q,p).fetchall()
     return render_template('lista_ordini.html', u=u, rows=rows, fc=cerca, fs=stato)
+
+@app.route('/ordini/<int:oid>/modifica', methods=['GET','POST'])
+@login_req
+def modifica_ordine(oid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    o=db.execute("SELECT * FROM ordini WHERE id=?",(oid,)).fetchone()
+    if not o: return redirect(url_for('lista_ordini'))
+    fornitori=db.execute("SELECT * FROM fornitori WHERE attivo=1 ORDER BY ragione_sociale").fetchall()
+    commesse=db.execute("SELECT * FROM commesse WHERE stato='attiva' ORDER BY codice").fetchall()
+    um_list=db.execute("SELECT valore FROM unita_misura ORDER BY valore").fetchall()
+    arti_exist=db.execute("SELECT * FROM ordini_articoli WHERE ordine_id=? ORDER BY id",(oid,)).fetchall()
+    if request.method=='POST':
+        db.execute("UPDATE ordini SET data=?,fornitore_id=?,commessa_id=?,oggetto=?,cig=?,"
+            "rif_preventivo=?,durc_ente=?,durc_data=?,durc_scadenza=?,tempi_consegna=?,"
+            "modalita_fatturazione=?,trasporto_incluso=?,trasporto_importo=?,trasporto_note=?,note=? WHERE id=?",
+            (request.form.get('data'), request.form.get('fornitore_id') or None,
+             request.form.get('commessa_id') or None, request.form.get('oggetto','').strip(),
+             request.form.get('cig','').strip(), request.form.get('rif_preventivo','').strip(),
+             request.form.get('durc_ente','').strip(), request.form.get('durc_data','').strip(),
+             request.form.get('durc_scadenza','').strip(), request.form.get('tempi_consegna','').strip(),
+             request.form.get('modalita_fatturazione',''),
+             1 if request.form.get('trasporto_incluso') else 0,
+             float(request.form.get('trasporto_importo',0) or 0),
+             request.form.get('trasporto_note','').strip(),
+             request.form.get('note','').strip(), oid))
+        db.execute("DELETE FROM ordini_articoli WHERE ordine_id=?",(oid,))
+        descs=request.form.getlist('desc[]'); ums=request.form.getlist('um[]')
+        qtas=request.form.getlist('qta[]'); prezzi=request.form.getlist('prezzo[]')
+        notes=request.form.getlist('note_riga[]')
+        for i,desc in enumerate(descs):
+            if not desc.strip(): continue
+            try: qta=float(qtas[i]) if i<len(qtas) and qtas[i] else None
+            except: qta=None
+            try: prezzo=float(prezzi[i]) if i<len(prezzi) and prezzi[i] else None
+            except: prezzo=None
+            db.execute("INSERT INTO ordini_articoli (ordine_id,descrizione,unita_misura,quantita,prezzo_unitario,note) VALUES (?,?,?,?,?,?)",
+                (oid,desc.strip(),ums[i] if i<len(ums) else '',qta,prezzo,notes[i] if i<len(notes) else ''))
+        db.commit()
+        log('modifica_ordine','Ordine '+o['numero']+' modificato','ordine',oid)
+        return redirect(url_for('dettaglio_ordine',oid=oid))
+    return render_template('nuovo_ordine.html', u=u, fornitori=fornitori, commesse=commesse,
+        um_list=um_list, rf_src=None, arti_src=arti_exist,
+        numero_prev=o['numero'], oggi=o['data'] or date.today().isoformat(),
+        modalita_default=o['modalita_fatturazione'] or '',
+        o=o, modifica=True)
 
 @app.route('/ordini/nuovo', methods=['GET','POST'])
 @login_req
