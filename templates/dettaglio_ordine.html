@@ -62,6 +62,7 @@
       <div class="ch"><h3>Azioni</h3></div>
       <div style="display:flex;flex-direction:column;gap:.55rem">
         <a href="{{ url_for('stampa_ordine',oid=o['id']) }}" class="btn bv" style="width:100%;justify-content:center" target="_blank">🖨 Stampa / Salva PDF</a>
+        <a href="{{ url_for('modifica_ordine',oid=o['id']) }}" class="btn bo" style="width:100%;justify-content:center">✏️ Modifica</a>
         {% if o['stato']=='bozza' %}
         <form method="POST" action="{{ url_for('azione_ordine',oid=o['id']) }}">
           <input type="hidden" name="azione" value="conferma">
