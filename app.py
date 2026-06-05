@@ -563,6 +563,160 @@ def stampa_rif(rfid):
     return render_template('stampa_rif.html', u=u, rf=rf, arti=arti,
         oggi=date.today().strftime('%d/%m/%Y'))
 
+
+# ── ORDINI DI ACQUISIZIONE ─────────────────────────────────────────────────────
+
+@app.route('/ordini')
+@login_req
+def lista_ordini():
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    cerca=request.args.get('cerca',''); stato=request.args.get('stato','')
+    q=("SELECT o.*,f.ragione_sociale fn, u2.nome||' '||u2.cognome un"
+       " FROM ordini o LEFT JOIN fornitori f ON o.fornitore_id=f.id"
+       " LEFT JOIN utenti u2 ON o.creato_da=u2.id WHERE 1=1")
+    p=[]
+    if stato: q+=" AND o.stato=?"; p.append(stato)
+    if cerca: q+=" AND (o.numero LIKE ? OR o.oggetto LIKE ?)"; p+=['%'+cerca+'%','%'+cerca+'%']
+    q+=" ORDER BY o.creato_il DESC"
+    rows=db.execute(q,p).fetchall()
+    return render_template('lista_ordini.html', u=u, rows=rows, fc=cerca, fs=stato)
+
+@app.route('/ordini/nuovo', methods=['GET','POST'])
+@login_req
+def nuovo_ordine():
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    fornitori=db.execute("SELECT * FROM fornitori WHERE attivo=1 ORDER BY ragione_sociale").fetchall()
+    commesse=db.execute("SELECT * FROM commesse WHERE stato='attiva' ORDER BY codice").fetchall()
+    um_list=db.execute("SELECT valore FROM unita_misura ORDER BY valore").fetchall()
+    # Import da richiesta fornitore
+    rif_id=request.args.get('from_rif')
+    rf_src=None; arti_src=[]
+    if rif_id:
+        rf_src=db.execute("SELECT rf.*,f.ragione_sociale fn,f.indirizzo fi,f.comune fco,"
+            "f.provincia fp,f.partita_iva fpi,f.pec fpec,f.email fe,f.telefono ft,f.referente fr"
+            " FROM richieste_fornitori rf LEFT JOIN fornitori f ON rf.fornitore_id=f.id"
+            " WHERE rf.id=?",(rif_id,)).fetchone()
+        if rf_src:
+            arti_src=db.execute("SELECT * FROM rif_articoli WHERE rif_id=? ORDER BY id",(rif_id,)).fetchall()
+
+    if request.method=='POST':
+        anno=datetime.now().year
+        n=db.execute("SELECT COUNT(*) FROM ordini WHERE strftime('%Y',data)=?",(str(anno),)).fetchone()[0]
+        numero='ORD-%d-%04d'%(anno,n+1)
+        cur=db.execute(
+            "INSERT INTO ordini (numero,data,rif_id,richiesta_acq_id,fornitore_id,commessa_id,"
+            "oggetto,cig,rif_preventivo,durc_ente,durc_data,durc_scadenza,"
+            "tempi_consegna,modalita_fatturazione,trasporto_incluso,trasporto_importo,"
+            "trasporto_note,note,stato,creato_da) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (numero,
+             request.form.get('data',date.today().isoformat()),
+             request.form.get('rif_id') or None,
+             request.form.get('richiesta_acq_id') or None,
+             request.form.get('fornitore_id') or None,
+             request.form.get('commessa_id') or None,
+             request.form.get('oggetto','').strip(),
+             request.form.get('cig','').strip(),
+             request.form.get('rif_preventivo','').strip(),
+             request.form.get('durc_ente','').strip(),
+             request.form.get('durc_data','').strip(),
+             request.form.get('durc_scadenza','').strip(),
+             request.form.get('tempi_consegna','').strip(),
+             request.form.get('modalita_fatturazione',''),
+             1 if request.form.get('trasporto_incluso') else 0,
+             float(request.form.get('trasporto_importo',0) or 0),
+             request.form.get('trasporto_note','').strip(),
+             request.form.get('note','').strip(),
+             'bozza', u['id']))
+        oid=cur.lastrowid
+        descs=request.form.getlist('desc[]')
+        ums=request.form.getlist('um[]')
+        qtas=request.form.getlist('qta[]')
+        prezzi=request.form.getlist('prezzo[]')
+        notes=request.form.getlist('note_riga[]')
+        for i,desc in enumerate(descs):
+            if not desc.strip(): continue
+            try: qta=float(qtas[i]) if i<len(qtas) and qtas[i] else None
+            except: qta=None
+            try: prezzo=float(prezzi[i]) if i<len(prezzi) and prezzi[i] else None
+            except: prezzo=None
+            db.execute("INSERT INTO ordini_articoli (ordine_id,descrizione,unita_misura,quantita,prezzo_unitario,note) VALUES (?,?,?,?,?,?)",
+                (oid,desc.strip(),ums[i] if i<len(ums) else '',qta,prezzo,notes[i] if i<len(notes) else ''))
+        if request.form.get('azione')=='conferma':
+            db.execute("UPDATE ordini SET stato='confermato',confermato_il=? WHERE id=?",(datetime.now().isoformat(),oid))
+        db.commit()
+        log('nuovo_ordine','Ordine '+numero+' creato','ordine',oid)
+        return redirect(url_for('dettaglio_ordine',oid=oid))
+
+    anno=datetime.now().year
+    n=db.execute("SELECT COUNT(*) FROM ordini WHERE strftime('%Y',data)=?",(str(anno),)).fetchone()[0]
+    numero_prev='ORD-%d-%04d'%(anno,n+1)
+    return render_template('nuovo_ordine.html', u=u, fornitori=fornitori, commesse=commesse,
+        um_list=um_list, rf_src=rf_src, arti_src=arti_src,
+        numero_prev=numero_prev, oggi=date.today().isoformat(),
+        modalita_default='Split Payment in base all\'art. 17-ter, co.1-bis D.P.R. n° 633/1972 — Cod. destinatario KRRH6B9 — PEC: somica@pec.it')
+
+@app.route('/ordini/<int:oid>')
+@login_req
+def dettaglio_ordine(oid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    o=db.execute("SELECT o.*,f.ragione_sociale fn,f.indirizzo fi,f.comune fco,f.provincia fp,"
+        "f.partita_iva fpi,f.pec fpec,f.email fe,f.telefono ft,f.referente fr,f.codice_fiscale fcf,"
+        "c.codice cc,c.descrizione cd"
+        " FROM ordini o LEFT JOIN fornitori f ON o.fornitore_id=f.id"
+        " LEFT JOIN commesse c ON o.commessa_id=c.id WHERE o.id=?",(oid,)).fetchone()
+    if not o: return redirect(url_for('lista_ordini'))
+    arti=db.execute("SELECT * FROM ordini_articoli WHERE ordine_id=? ORDER BY id",(oid,)).fetchall()
+    # Calcoli
+    totale=sum((a['quantita'] or 0)*(a['prezzo_unitario'] or 0) for a in arti)
+    trasporto=o['trasporto_importo'] or 0
+    totale_finale=totale+(trasporto if o['trasporto_incluso'] else 0)
+    return render_template('dettaglio_ordine.html', u=u, o=o, arti=arti,
+        totale=totale, trasporto=trasporto, totale_finale=totale_finale)
+
+@app.route('/ordini/<int:oid>/azione', methods=['POST'])
+@login_req
+def azione_ordine(oid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); az=request.form.get('azione')
+    o=db.execute("SELECT * FROM ordini WHERE id=?",(oid,)).fetchone()
+    if not o: return redirect(url_for('lista_ordini'))
+    if az=='conferma':
+        db.execute("UPDATE ordini SET stato='confermato',confermato_il=? WHERE id=?",(datetime.now().isoformat(),oid))
+        log('conferma_ordine','Ordine '+o['numero']+' confermato','ordine',oid)
+    elif az=='archivia':
+        db.execute("UPDATE ordini SET stato='archiviato' WHERE id=?",(oid,))
+        log('archivia_ordine','Ordine '+o['numero']+' archiviato','ordine',oid)
+    db.commit()
+    return redirect(url_for('dettaglio_ordine',oid=oid))
+
+@app.route('/ordini/<int:oid>/stampa')
+@login_req
+def stampa_ordine(oid):
+    if session.get('liv') not in ('admin','master','ufficio_acquisti'):
+        return redirect(url_for('dashboard'))
+    db=get_db(); u=utente()
+    o=db.execute("SELECT o.*,f.ragione_sociale fn,f.indirizzo fi,f.comune fco,f.provincia fp,"
+        "f.partita_iva fpi,f.pec fpec,f.email fe,f.telefono ft,f.referente fr,f.codice_fiscale fcf,"
+        "c.codice cc,c.descrizione cd"
+        " FROM ordini o LEFT JOIN fornitori f ON o.fornitore_id=f.id"
+        " LEFT JOIN commesse c ON o.commessa_id=c.id WHERE o.id=?",(oid,)).fetchone()
+    if not o: return redirect(url_for('lista_ordini'))
+    arti=db.execute("SELECT * FROM ordini_articoli WHERE ordine_id=? ORDER BY id",(oid,)).fetchall()
+    totale=sum((a['quantita'] or 0)*(a['prezzo_unitario'] or 0) for a in arti)
+    trasporto=o['trasporto_importo'] or 0
+    totale_finale=totale+(trasporto if o['trasporto_incluso'] else 0)
+    return render_template('stampa_ordine.html', u=u, o=o, arti=arti,
+        totale=totale, trasporto=trasporto, totale_finale=totale_finale,
+        oggi=date.today().strftime('%d/%m/%Y'))
+
+
 if __name__=='__main__':
     init_db()
     print("\n"+"="*54)
