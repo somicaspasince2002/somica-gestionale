@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, g, jsonify, make_response)
 import sqlite3, hashlib, os, json
@@ -663,7 +664,7 @@ def nuovo_ordine():
     return render_template('nuovo_ordine.html', u=u, fornitori=fornitori, commesse=commesse,
         um_list=um_list, rf_src=rf_src, arti_src=arti_src,
         numero_prev='ORD-%d-%04d'%(anno,n+1), oggi=date.today().isoformat(),
-        modalita_default="Split Payment in base all'art. 17-ter, co.1-bis D.P.R. n° 633/1972 — Cod. destinatario KRRH6B9 — PEC: somica@pec.it",
+        modalita_default="Split Payment in base all'art. 17-ter, co.1-bis D.P.R. n. 633/1972 - Cod. destinatario KRRH6B9 - PEC: somica@pec.it",
         o=None, modifica=False)
 
 @app.route('/ordini/<int:oid>/modifica', methods=['GET','POST'])
@@ -756,4 +757,40 @@ def stampa_ordine(oid):
         " LEFT JOIN fornitori f ON o.fornitore_id=f.id"
         " LEFT JOIN commesse c ON o.commessa_id=c.id WHERE o.id=?",(oid,)).fetchone()
     if not o: return redirect(url_for('lista_ordini'))
-    arti=db.execute("SELECT * FROM ordini_articoli WHERE ordine_id=? ORDER BY id",(o
+    arti=db.execute("SELECT * FROM ordini_articoli WHERE ordine_id=? ORDER BY id",(oid,)).fetchall()
+    totale=sum((a['quantita'] or 0)*(a['prezzo_unitario'] or 0) for a in arti)
+    trasporto=o['trasporto_importo'] or 0
+    totale_finale=totale+(trasporto if o['trasporto_incluso'] else 0)
+    return render_template('stampa_ordine.html', u=u, o=o, arti=arti,
+        totale=totale, trasporto=trasporto, totale_finale=totale_finale,
+        oggi=date.today().strftime('%d/%m/%Y'))
+
+# ─── ELIMINA ANAGRAFICHE ───────────────────────────────────────────────────────
+@app.route('/anagrafiche/articoli/<int:aid>/elimina', methods=['POST'])
+@login_req
+def ana_articoli_elimina(aid):
+    get_db().execute("DELETE FROM articoli WHERE id=?",(aid,)); get_db().commit()
+    return redirect(url_for('ana_articoli'))
+
+@app.route('/anagrafiche/commesse/<int:cid>/elimina', methods=['POST'])
+@login_req
+def ana_commesse_elimina(cid):
+    get_db().execute("DELETE FROM commesse WHERE id=?",(cid,)); get_db().commit()
+    return redirect(url_for('ana_commesse'))
+
+@app.route('/anagrafiche/utenti/<int:uid>/elimina', methods=['POST'])
+@login_req
+def ana_utenti_elimina(uid):
+    if uid==session.get('uid'): return redirect(url_for('ana_utenti'))
+    get_db().execute("UPDATE utenti SET attivo=0 WHERE id=?",(uid,)); get_db().commit()
+    return redirect(url_for('ana_utenti'))
+
+
+    init_db()
+    print("\n"+"="*54)
+    print("  SO.MI.CA. S.p.A. — Gestionale Acquisizioni v3")
+    print("  http://localhost:5000")
+    print("="*54)
+    print("  admin/admin2024  |  acquisti/acquisti2024")
+    print("  stefano/tecnico2024  |  master/master2024\n")
+    app.run(debug=True, host='0.0.0.0', port=5000)
