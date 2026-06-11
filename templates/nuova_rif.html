@@ -34,11 +34,15 @@
   <div class="g3" style="margin-bottom:.9rem">
     <div class="fg"><div class="fl">Data *</div><input class="fi" type="date" name="data" value="{{ oggi }}" required></div>
     <div class="fg"><div class="fl">Tipologia *</div>
-      <select class="fs" name="tipologia" required onchange="aggiornaTesto(this.value)">
+      <select class="fs" name="tipologia" id="sel-tipo" required onchange="aggiornaTesto(this.value)">
         <option value="">— seleziona —</option>
         <option value="preventivo">Richiesta di Preventivo</option>
         <option value="indagine">Indagine di Mercato</option>
       </select>
+      <div style="display:flex;gap:.4rem;margin-top:.4rem">
+        <button type="button" class="btn bp bs" style="flex:1;font-size:.75rem" onclick="setTipo('preventivo')">Preventivo</button>
+        <button type="button" class="btn bo bs" style="flex:1;font-size:.75rem" onclick="setTipo('indagine')">Indagine mercato</button>
+      </div>
     </div>
     <div class="fg"><div class="fl">Fornitore</div>
       <select class="fs" name="fornitore_id" id="sel-forn" onchange="caricaFornitore(this.value)">
@@ -74,7 +78,7 @@
           </select></td>
           <td><input type="text" name="qta[]" class="ai" value="{{ a['quantita'] or '' }}" style="text-align:right"></td>
           <td><input type="text" name="note_riga[]" class="ai" value="{{ a['note'] or '' }}" placeholder="Note..."></td>
-          <td><button type="button" class="bdl" onclick="delRow(this)">✕</button></td>
+          <td><button type="button" class="bdl" onclick="delRow(this)" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .6rem;font-size:.85rem;font-weight:700">✕</button></td>
         </tr>
         {% endfor %}{% else %}
         <tr>
@@ -82,7 +86,7 @@
           <td><select name="um[]" class="ai" style="padding:.38rem .35rem"><option value="">—</option>{% for um in um_list %}<option value="{{ um['valore'] }}">{{ um['valore'] }}</option>{% endfor %}</select></td>
           <td><input type="text" name="qta[]" class="ai" placeholder="0" style="text-align:right"></td>
           <td><input type="text" name="note_riga[]" class="ai" placeholder="Note..."></td>
-          <td><button type="button" class="bdl" onclick="delRow(this)">✕</button></td>
+          <td><button type="button" onclick="delRow(this)" style="background:#fee2e2;color:#cc1a00;border:1px solid #fca5a5;border-radius:6px;padding:.3rem .6rem;font-size:.85rem;font-weight:700">✕</button></td>
         </tr>
         {% endif %}
       </tbody>
@@ -111,6 +115,11 @@ var TESTI={
 function aggiornaTesto(v){
   var el=document.getElementById('testo_intro');
   if(TESTI[v]) el.value=TESTI[v];
+}
+function setTipo(v){
+  var sel=document.getElementById('sel-tipo');
+  sel.value=v;
+  aggiornaTesto(v);
 }
 function caricaFornitore(id){
   if(!id){document.getElementById('info-forn').style.display='none';return;}
