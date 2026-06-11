@@ -12,9 +12,13 @@ DB  = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'db', 'somica.db'
 # ─── DB ───────────────────────────────────────────────────────────────────────
 def get_db():
     if 'db' not in g:
+        os.makedirs(os.path.dirname(DB), exist_ok=True)
         g.db = sqlite3.connect(DB)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys=ON")
+        tables = g.db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        if not tables:
+            _init_db()
     return g.db
 
 @app.teardown_appcontext
